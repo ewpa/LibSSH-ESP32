@@ -25,7 +25,7 @@ const char *configSTASSID = "YourWiFiSSID";
 const char *configSTAPSK = "YourWiFiPSK";
 
 // The command line you would use to run this from a shell prompt.
-#define EX_CMD "samplesshd-kbdint"
+#define EX_CMD "samplesshd-kbdint", "::"
 
 // SSH key storage location.
 #define KEYS_FOLDER "/spiffs/"
@@ -36,6 +36,9 @@ const unsigned int configSTACK = 10240;
 // Include the Arduino library.
 #include "libssh_esp32.h"
 
+// Use argument parsing.
+#define HAVE_ARGP_H
+
 // EXAMPLE includes/defines START
 #include "config.h"
 
@@ -43,7 +46,7 @@ const unsigned int configSTACK = 10240;
 #include <libssh/server.h>
 
 #ifdef HAVE_ARGP_H
-#include <argp.h>
+#include "argp.h"
 #endif
 #include <stdlib.h>
 #include <string.h>
@@ -64,6 +67,10 @@ const unsigned int configSTACK = 10240;
 static int port = 22;
 static bool authenticated = false;
 // EXAMPLE includes/defines FINISH
+
+#include <sys/reent.h>
+struct _reent reent_data_esp32;
+struct _reent *_impure_ptr = &reent_data_esp32;
 
 #include "IPv6Address.h"
 #include "WiFi.h"
@@ -193,7 +200,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
   /* Get the input argument from argp_parse, which we
    * know is a pointer to our arguments structure.
    */
-  ssh_bind sshbind = state->input;
+  ssh_bind sshbind = (ssh_bind)state->input;
 
   switch (key) {
     case 'p':
@@ -530,6 +537,8 @@ esp_err_t event_cb(void *ctx, system_event_t *event)
 
 void controlTask(void *pvParameter)
 {
+  _REENT_INIT_PTR((&reent_data_esp32));
+
   // Mount the file system.
   boolean fsGood = SPIFFS.begin();
   if (!fsGood)
@@ -611,8 +620,8 @@ void controlTask(void *pvParameter)
 
         // Call the EXAMPLE main code.
         {
-          char *ex_argv[] = { EX_CMD };
-          int ex_argc = sizeof ex_argv/sizeof ex_argv[0];
+          char *ex_argv[] = { EX_CMD, NULL };
+          int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
           printf("%% Execution in progress:");
           short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
           printf("\n\n");

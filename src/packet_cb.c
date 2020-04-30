@@ -25,7 +25,7 @@
 
 #include <stdlib.h>
 #ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 #endif
 
 #include "libssh/priv.h"

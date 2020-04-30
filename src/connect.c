@@ -75,7 +75,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
+#include <lwip/tcp.h>
 
 #endif /* _WIN32 */
 

@@ -32,7 +32,7 @@
 
 #ifndef _WIN32
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 #endif
 
 #include "libssh/priv.h"
@@ -48,7 +48,7 @@
 #include "libssh/server.h"
 #endif
 
-#define WINDOWBASE 1280000
+#define WINDOWBASE 8000
 #define WINDOWLIMIT (WINDOWBASE/2)
 
 /*
@@ -57,7 +57,7 @@
  * size of 35000 bytes or less.
  */
 #define CHANNEL_MAX_PACKET 32768
-#define CHANNEL_INITIAL_WINDOW 64000
+#define CHANNEL_INITIAL_WINDOW 250
 
 /**
  * @defgroup libssh_channel The SSH channel functions

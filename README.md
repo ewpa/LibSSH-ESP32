@@ -4,21 +4,17 @@ Libssh port to ESP32 Arduino library
 This is a port of the excellent libssh.org library to an Arduino library for
 the ESP32 microcontroller.
 
-It lets you run an SSH server or SSH client on your ESP32.  Just write your
-code and add the following line to your sketch:
+It lets you run an SSH server and SSH client on your ESP32.  Write your code and
+add the following include and initialization lines to your sketch:
 
   #include "libssh_esp32.h"
+  libssh_begin();
 
-The latest information on this port can be found at the following address.
+This library is currently built and tested against version 1.0.4 of the ESP32
+Arduino core.  Please refer to the GIT log for the latest changes.  Further
+information on this port can be found at the following address.
 
   https://www.ewan.cc/?q=node/157
-
-Before you use this library, please note that it requires a fix to be
-applied to the ESP32 Arduino core (currently at version 1.0.4).  This is a
-very minor fix.  Please refer to the following pull request on GitHub for
-further information.
-
-  https://github.com/espressif/arduino-esp32/pull/3934
 
 This port created by Ewan Parker on 18th April 2020.
 

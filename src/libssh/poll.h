@@ -25,7 +25,7 @@
 
 #ifdef HAVE_POLL
 
-#include <poll.h>
+#include <sys/poll.h>
 typedef struct pollfd ssh_pollfd_t;
 
 #else /* HAVE_POLL */

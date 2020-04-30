@@ -57,7 +57,7 @@ char *strndup(const char *s, size_t n);
 #endif
 
 #ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 #endif
 
 #ifndef bswap_32

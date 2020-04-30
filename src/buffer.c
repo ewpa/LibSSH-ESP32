@@ -29,7 +29,7 @@
 
 #ifndef _WIN32
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 #endif
 
 #include "libssh/priv.h"
@@ -52,8 +52,8 @@ struct ssh_buffer_struct {
     uint8_t *data;
 };
 
-/* Buffer size maximum is 256M */
-#define BUFFER_SIZE_MAX 0x10000000
+/* Buffer size maximum is 16k */
+#define BUFFER_SIZE_MAX 16384
 
 /**
  * @defgroup libssh_buffer The SSH buffer functions.

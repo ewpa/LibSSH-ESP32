@@ -47,7 +47,7 @@
 #endif
 
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 
 #include "libssh/agent.h"
 #include "libssh/priv.h"

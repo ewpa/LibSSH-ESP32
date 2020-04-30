@@ -10,8 +10,8 @@
 #define VERSION "0.8.90"
 
 #define SYSCONFDIR "etc"
-#define BINARYDIR "/home/ewan/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-build-local"
-#define SOURCEDIR "/home/ewan/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-src-upstream"
+#define BINARYDIR "/home/ewan/Documents/Development/Embedded/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-build-local"
+#define SOURCEDIR "/home/ewan/Documents/Development/Embedded/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-src-upstream"
 
 /* Global bind configuration file path */
 #define GLOBAL_BIND_CONFIG "/etc/ssh/libssh_server_config"
@@ -186,7 +186,7 @@
 #define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `poll' function. */
-// #undef HAVE_POLL
+#define HAVE_POLL 1
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1

@@ -16,7 +16,7 @@ const char *configSTAPSK = "YourWiFiPSK";
 #define EX_CMD "exec"
 
 // Stack size needed to run SSH and the command parser.
-const unsigned int configSTACK = 16384;
+const unsigned int configSTACK = 51200;
 
 // Include the Arduino library.
 #include "libssh_esp32.h"
@@ -51,6 +51,8 @@ static volatile devState_t devState;
 static volatile bool gotIpAddr, gotIp6Addr;
 
 #include "SPIFFS.h"
+#include "driver/uart.h"
+#include "esp_vfs_dev.h"
 
 // EXAMPLE functions START
 /*
@@ -170,12 +172,6 @@ int verify_knownhost(ssh_session session)
 
     return 0;
 }
-
-/*
- * connect_ssh.c
- * This file contains an example of how to connect to a
- * SSH server using libssh
- */
 
 /*
  * authentication.c
@@ -417,6 +413,12 @@ int authenticate_console(ssh_session session)
 
     return rc;
 }
+
+/*
+ * connect_ssh.c
+ * This file contains an example of how to connect to a
+ * SSH server using libssh
+ */
 
 /*
 Copyright 2009 Aris Adamantiadis
@@ -676,8 +678,8 @@ void controlTask(void *pvParameter)
 
         // Call the EXAMPLE main code.
         {
-          char *ex_argv[] = { EX_CMD };
-          int ex_argc = sizeof ex_argv/sizeof ex_argv[0];
+          char *ex_argv[] = { EX_CMD, NULL };
+          int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
           printf("%% Execution in progress:");
           short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
           printf("\n\n");
@@ -709,7 +711,11 @@ void setup()
 {
   devState = STATE_NEW;
 
-  Serial.begin(115200);
+  // Use the expected blocking I/O behavior.
+  setvbuf(stdin, NULL, _IONBF, 0);
+  setvbuf(stdout, NULL, _IONBF, 0);
+  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
 
   tcpip_adapter_init();
   esp_event_loop_init(event_cb, NULL);

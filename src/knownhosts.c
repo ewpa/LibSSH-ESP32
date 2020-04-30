@@ -30,7 +30,7 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#include <arpa/inet.h>
+#include <lwip/inet.h>
 #include <netinet/in.h>
 #endif
 

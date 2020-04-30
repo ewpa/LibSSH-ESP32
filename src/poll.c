@@ -82,7 +82,7 @@ struct ssh_poll_ctx_struct {
 };
 
 #ifdef HAVE_POLL
-#include <poll.h>
+#include <sys/poll.h>
 
 void ssh_poll_init(void) {
     return;

@@ -29,7 +29,7 @@
  */
 
 // The command line you would use to run this from a shell prompt.
-#define EX_CMD "keygen2", "--type", "ed25519", "--file", "/spiffs/id_ed25519"
+#define EX_CMD "keygen2", "--type", "ed25519", "--file", "/spiffs/.ssh/id_ed25519"
 
 // Stack size needed to run SSH and the command parser.
 const unsigned int configSTACK = 16384;
@@ -57,6 +57,8 @@ struct _reent reent_data_esp32;
 struct _reent *_impure_ptr = &reent_data_esp32;
 
 #include "SPIFFS.h"
+#include "driver/uart.h"
+#include "esp_vfs_dev.h"
 
 // EXAMPLE functions START
 struct arguments_st {
@@ -521,8 +523,8 @@ void controlTask(void *pvParameter)
 
   // Call the EXAMPLE main code.
   {
-    char *ex_argv[] = { EX_CMD };
-    int ex_argc = sizeof ex_argv/sizeof ex_argv[0];
+    char *ex_argv[] = { EX_CMD, NULL };
+    int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
     printf("%% Execution in progress:");
     short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
     printf("\n\n");
@@ -535,7 +537,11 @@ void controlTask(void *pvParameter)
 
 void setup()
 {
-  Serial.begin(115200);
+  // Use the expected blocking I/O behavior.
+  setvbuf(stdin, NULL, _IONBF, 0);
+  setvbuf(stdout, NULL, _IONBF, 0);
+  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
 
   // Stack size needs to be larger, so continue in a new task.
   xTaskCreatePinnedToCore(controlTask, "ctl", configSTACK, NULL,
