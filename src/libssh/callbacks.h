@@ -764,6 +764,17 @@ typedef int (*ssh_channel_subsystem_request_callback) (ssh_session session,
                                             void *userdata);
 
 /**
+ * @brief BREAK from a client.
+ * @param channel the channel
+ * @param userdata Userdata to be passed to the callback function.
+ * @returns 0 if the BREAK request is accepted
+ * @returns -1 if the request is denied
+ */
+typedef int (*ssh_channel_break_request_callback) (ssh_session session,
+                                            ssh_channel channel,
+                                            void *userdata);
+
+/**
  * @brief SSH channel write will not block (flow control).
  *
  * @param channel the channel
@@ -843,6 +854,9 @@ struct ssh_channel_callbacks_struct {
    * (like sftp).
    */
   ssh_channel_subsystem_request_callback channel_subsystem_request_function;
+  /** This function will be called when a client requests a BREAK signal.
+   */
+  ssh_channel_break_request_callback channel_break_function;
   /** This function will be called when the channel write is guaranteed
    * not to block.
    */

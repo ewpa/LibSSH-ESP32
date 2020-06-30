@@ -294,6 +294,22 @@ static int ssh_execute_server_request(ssh_session session, ssh_message msg)
                     return SSH_OK;
                 }
                 ssh_callbacks_iterate_end();
+            } else if (msg->channel_request.type == SSH_CHANNEL_REQUEST_BREAK){
+                ssh_callbacks_iterate(channel->callbacks,
+                                      ssh_channel_callbacks,
+                                      channel_break_function) {
+                    rc = ssh_callbacks_iterate_exec(channel_break_function,
+                                                    session,
+                                                    channel);
+                    if (rc == 0) {
+                        ssh_message_channel_request_reply_success(msg);
+                    } else {
+                        ssh_message_reply_default(msg);
+                    }
+
+                    return SSH_OK;
+                }
+                ssh_callbacks_iterate_end();
             }
             break;
         case SSH_REQUEST_SERVICE:
@@ -1424,6 +1440,11 @@ int ssh_message_handle_channel_request(ssh_session session, ssh_channel channel,
       goto error;
     }
 
+    goto end;
+  }
+
+  if (strcmp(request, "break") == 0) {
+    msg->channel_request.type = SSH_CHANNEL_REQUEST_BREAK;
     goto end;
   }
 
