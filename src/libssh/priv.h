@@ -195,7 +195,9 @@ int gettimeofday(struct timeval *__p, void *__t);
 # endif
 #endif
 
-#if defined(HAVE_GCC_THREAD_LOCAL_STORAGE)
+#if defined (ESP32)
+# define LIBSSH_THREAD volatile
+#elif defined(HAVE_GCC_THREAD_LOCAL_STORAGE)
 # define LIBSSH_THREAD __thread
 #elif defined(HAVE_MSC_THREAD_LOCAL_STORAGE)
 # define LIBSSH_THREAD __declspec(thread)
