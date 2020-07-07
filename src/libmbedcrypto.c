@@ -685,8 +685,13 @@ static void cipher_encrypt(struct ssh_cipher_struct *cipher,
     }
 
     if (total_len != len) {
+#ifndef ESP32
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %zu for %zu",
                 outlen, len);
+#else
+        SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %u for %u",
+                outlen, len);
+#endif
         return;
     }
 
@@ -704,8 +709,13 @@ static void cipher_encrypt_cbc(struct ssh_cipher_struct *cipher, void *in, void 
     }
 
     if (outlen != len) {
+#ifndef ESP32
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %zu for %zu",
                 outlen, len);
+#else
+        SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %u for %lu",
+                outlen, len);
+#endif
         return;
     }
 
@@ -743,8 +753,13 @@ static void cipher_decrypt(struct ssh_cipher_struct *cipher,
     total_len += outlen;
 
     if (total_len != len) {
+#ifndef ESP32
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %zu for %zu",
                 outlen, len);
+#else
+        SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %u for %u",
+                outlen, len);
+#endif
         return;
     }
 
@@ -788,8 +803,13 @@ static void cipher_decrypt_cbc(struct ssh_cipher_struct *cipher, void *in, void 
     }
 
     if (outlen != len) {
+#ifndef ESP32
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %zu for %zu",
                 outlen, len);
+#else
+        SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_update: output size %u for %lu",
+                outlen, len);
+#endif
         return;
     }
 

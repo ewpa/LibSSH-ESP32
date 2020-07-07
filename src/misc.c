@@ -35,6 +35,10 @@
 
 #endif /* _WIN32 */
 
+#ifdef ESP32
+#include "libssh_esp32_compat.h"
+#endif /* ESP32 */
+
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -362,7 +366,7 @@ char *ssh_lowercase(const char* str) {
   }
 
   for (p = new; *p; p++) {
-    *p = tolower(*p);
+    *p = tolower((unsigned char)*p);
   }
 
   return new;

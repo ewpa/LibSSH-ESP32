@@ -192,7 +192,7 @@
 #define HAVE_SELECT 1
 
 /* Define to 1 if you have the `clock_gettime' function. */
-#define HAVE_CLOCK_GETTIME 1
+// #undef HAVE_CLOCK_GETTIME
 
 /* Define to 1 if you have the `ntohll' function. */
 /* #undef HAVE_NTOHLL */

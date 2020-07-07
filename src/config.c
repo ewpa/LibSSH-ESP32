@@ -504,6 +504,8 @@ out:
     return rv;
 }
 
+# ifndef ESP32
+
 static int
 ssh_config_parse_line(ssh_session session,
                       const char *line,
@@ -1132,6 +1134,8 @@ ssh_config_parse_line(ssh_session session,
   SAFE_FREE(x);
   return 0;
 }
+
+#endif /*ESP32 */
 
 /* @brief Parse configuration file and set the options to the given session
  *

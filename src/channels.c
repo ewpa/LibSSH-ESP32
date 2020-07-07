@@ -48,8 +48,8 @@
 #include "libssh/server.h"
 #endif
 
-#define WINDOWBASE 8000
-#define WINDOWLIMIT (WINDOWBASE/2)
+#define WINDOWBEGIN 8000
+#define WINDOWLIMIT (WINDOWBEGIN/2)
 
 /*
  * All implementations MUST be able to process packets with an
@@ -396,7 +396,7 @@ static int grow_window(ssh_session session,
                        ssh_channel channel,
                        uint32_t minimumsize)
 {
-  uint32_t new_window = minimumsize > WINDOWBASE ? minimumsize : WINDOWBASE;
+  uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBEGIN;
   int rc;
 
   if(new_window <= channel->local_window){
@@ -2092,7 +2092,7 @@ error:
 
 static ssh_channel ssh_channel_accept(ssh_session session, int channeltype,
     int timeout_ms, int *destination_port) {
-#ifndef _WIN32
+#if !defined( _WIN32) && !defined(ESP32)
   static const struct timespec ts = {
     .tv_sec = 0,
     .tv_nsec = 50000000 /* 50ms */
@@ -2135,6 +2135,8 @@ static ssh_channel ssh_channel_accept(ssh_session session, int channeltype,
     if(t>0){
 #ifdef _WIN32
       Sleep(50); /* 50ms */
+#elif defined(ESP32)
+      vTaskDelay(50 / portTICK_PERIOD_MS); /* 50 ms */
 #else
       nanosleep(&ts, NULL);
 #endif

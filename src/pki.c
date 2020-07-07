@@ -35,6 +35,10 @@
 #include "config.h"
 #include "libssh/wrapper.h"
 
+#ifdef ESP32
+#include "libssh_esp32_compat.h"
+#endif /* ESP32 */
+
 #include <errno.h>
 #include <ctype.h>
 #include <stdint.h>

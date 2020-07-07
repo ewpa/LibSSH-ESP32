@@ -299,7 +299,7 @@ ssh_bind_config_parse_line(ssh_bind bind,
 
     /* Remove trailing spaces */
     for (len = strlen(s) - 1; len > 0; len--) {
-        if (! isspace(s[len])) {
+        if (! isspace((unsigned char)s[len])) {
             break;
         }
         s[len] = '\0';

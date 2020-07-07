@@ -43,7 +43,7 @@ char *ssh_config_get_cmd(char **str)
 
     /* Ignore leading spaces */
     for (c = *str; *c; c++) {
-        if (! isblank(*c)) {
+        if (! isblank((unsigned char)*c)) {
             break;
         }
     }
@@ -80,7 +80,7 @@ char *ssh_config_get_token(char **str)
 
     /* Ignore leading spaces */
     for (c = *str; *c; c++) {
-        if (! isblank(*c)) {
+        if (! isblank((unsigned char)*c)) {
             break;
         }
     }
@@ -97,7 +97,7 @@ char *ssh_config_get_token(char **str)
 
     /* Otherwise terminate on space, equal or newline */
     for (r = c; *c; c++) {
-        if (isblank(*c) || *c == '=' || *c == '\n') {
+        if (isblank((unsigned char)*c) || *c == '=' || *c == '\n') {
             *c = '\0';
             goto out;
         }

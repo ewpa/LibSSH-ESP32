@@ -1,9 +1,12 @@
 // ESP32 libssh port.
+// libssh_esp32_compat.c
 //
 // Ewan Parker, created 18th April 2020.
-// Add missing implementations needed to link libssh with ESP32.
+// Missing implementations needed to link libssh with ESP32.
 //
 // Copyright (C) 2020 Ewan Parker.
+
+#include "libssh_esp32_compat.h"
 
 #ifndef LIBSSH_ESP32_COMPAT_USERNAME
 #define LIBSSH_ESP32_COMPAT_USERNAME "root"
@@ -27,6 +30,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <string.h>
 
 __attribute__((weak))
 pid_t waitpid(pid_t pid, int *wstatus, int options)

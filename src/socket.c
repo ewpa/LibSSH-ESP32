@@ -463,7 +463,7 @@ void ssh_socket_close(ssh_socket s)
 
     s->state = SSH_SOCKET_CLOSED;
 
-#ifndef _WIN32
+#if !defined( _WIN32) && !defined(ESP32)
     /* If the proxy command still runs try to kill it */
     if (s->proxy_pid != 0) {
         int status;
@@ -900,6 +900,8 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
     exit(1);
 }
 
+#ifndef ESP32
+
 /**
  * @internal
  * @brief Open a socket on a ProxyCommand
@@ -946,6 +948,8 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
 
     return SSH_OK;
 }
+
+#endif /* ESP32 */
 
 #endif /* _WIN32 */
 /** @} */
