@@ -1036,7 +1036,7 @@ static bool ssh_packet_need_rekey(ssh_session session,
                          in_cipher->blocks + next_blocks > in_cipher->max_blocks);
 
     SSH_LOG(SSH_LOG_PACKET,
-            "packet: [data_rekey_needed=%d, out_blocks=%" PRIu64 ", in_blocks=%" PRIu64,
+            "rekey: [data_rekey_needed=%d, out_blocks=%" PRIu64 ", in_blocks=%" PRIu64 "]",
             data_rekey_needed,
             out_cipher->blocks + next_blocks,
             in_cipher->blocks + next_blocks);
@@ -1213,7 +1213,7 @@ int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                 if (crypto != NULL) {
                     mac = packet_second_block + packet_remaining;
 
-                    if (etm) {
+                    if (crypto->in_hmac != SSH_HMAC_NONE && etm) {
                         rc = ssh_packet_hmac_verify(session,
                                                     data,
                                                     processed,
@@ -1243,7 +1243,7 @@ int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                         }
                     }
 
-                    if (!etm) {
+                    if (crypto->in_hmac != SSH_HMAC_NONE && !etm) {
                         rc = ssh_packet_hmac_verify(session,
                                                     ssh_buffer_get(session->in_buffer),
                                                     ssh_buffer_get_len(session->in_buffer),
@@ -1684,6 +1684,9 @@ static int packet_send2(ssh_session session)
     hmac = ssh_packet_encrypt(session,
                               ssh_buffer_get(session->out_buffer),
                               ssh_buffer_get_len(session->out_buffer));
+    /* XXX This returns null before switching on crypto, with none MAC
+     * and on various errors.
+     * We should distinguish between these cases to avoid hiding errors. */
     if (hmac != NULL) {
         rc = ssh_buffer_add_data(session->out_buffer,
                                  hmac,
@@ -1877,6 +1880,7 @@ int
 ssh_packet_set_newkeys(ssh_session session,
                        enum ssh_crypto_direction_e direction)
 {
+    struct ssh_cipher_struct *in_cipher = NULL, *out_cipher = NULL;
     int rc;
 
     SSH_LOG(SSH_LOG_TRACE,
@@ -1953,41 +1957,42 @@ ssh_packet_set_newkeys(ssh_session session,
         return SSH_ERROR;
     }
 
-    if (session->next_crypto->in_cipher == NULL ||
-        session->next_crypto->out_cipher == NULL) {
+    in_cipher = session->next_crypto->in_cipher;
+    out_cipher = session->next_crypto->out_cipher;
+    if (in_cipher == NULL || out_cipher == NULL) {
         return SSH_ERROR;
     }
 
     /* Initialize rekeying states */
-    ssh_init_rekey_state(session,
-                         session->next_crypto->out_cipher);
-    ssh_init_rekey_state(session,
-                         session->next_crypto->in_cipher);
+    ssh_init_rekey_state(session, out_cipher);
+    ssh_init_rekey_state(session, in_cipher);
     if (session->opts.rekey_time != 0) {
         ssh_timestamp_init(&session->last_rekey_time);
         SSH_LOG(SSH_LOG_PROTOCOL, "Set rekey after %" PRIu32 " seconds",
                 session->opts.rekey_time/1000);
     }
 
-    /* Initialize the encryption and decryption keys in next_crypto */
-    rc = session->next_crypto->in_cipher->set_decrypt_key(
-        session->next_crypto->in_cipher,
-        session->next_crypto->decryptkey,
-        session->next_crypto->decryptIV);
-    if (rc < 0) {
-        /* On error, make sure it is not used */
-        session->next_crypto->used = 0;
-        return SSH_ERROR;
+    if (in_cipher->set_decrypt_key) {
+        /* Initialize the encryption and decryption keys in next_crypto */
+        rc = in_cipher->set_decrypt_key(in_cipher,
+                                        session->next_crypto->decryptkey,
+                                        session->next_crypto->decryptIV);
+        if (rc < 0) {
+            /* On error, make sure it is not used */
+            session->next_crypto->used = 0;
+            return SSH_ERROR;
+        }
     }
 
-    rc = session->next_crypto->out_cipher->set_encrypt_key(
-        session->next_crypto->out_cipher,
-        session->next_crypto->encryptkey,
-        session->next_crypto->encryptIV);
-    if (rc < 0) {
-        /* On error, make sure it is not used */
-        session->next_crypto->used = 0;
-        return SSH_ERROR;
+    if (out_cipher->set_encrypt_key) {
+        rc = out_cipher->set_encrypt_key(out_cipher,
+                                         session->next_crypto->encryptkey,
+                                         session->next_crypto->encryptIV);
+        if (rc < 0) {
+            /* On error, make sure it is not used */
+            session->next_crypto->used = 0;
+            return SSH_ERROR;
+        }
     }
 
     return SSH_OK;

@@ -488,7 +488,7 @@ int ex_main(int argc, char **argv){
     ssh_session session;
     ssh_channel channel;
     char buffer[256];
-    int nbytes;
+    int rbytes, wbytes, total = 0;
     int rc;
 
     session = connect_ssh("localhost", NULL, 0);
@@ -515,15 +515,30 @@ int ex_main(int argc, char **argv){
         goto failed;
     }
 
-    nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
-    while (nbytes > 0) {
-        if (fwrite(buffer, 1, nbytes, stdout) != (unsigned int) nbytes) {
-            goto failed;
-        }
-        nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
+    rbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
+    if (rbytes <= 0) {
+        goto failed;
     }
 
-    if (nbytes < 0) {
+    do {
+        wbytes = fwrite(buffer + total, 1, rbytes, stdout);
+        if (wbytes <= 0) {
+            goto failed;
+        }
+
+        total += wbytes;
+
+        /* When it was not possible to write the whole buffer to stdout */
+        if (wbytes < rbytes) {
+            rbytes -= wbytes;
+            continue;
+        }
+
+        rbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
+        total = 0;
+    } while (rbytes > 0);
+
+    if (rbytes < 0) {
         goto failed;
     }
 

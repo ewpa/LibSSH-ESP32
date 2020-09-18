@@ -76,7 +76,8 @@ out:
 char *ssh_config_get_token(char **str)
 {
     register char *c;
-    char *r;
+    bool had_equal = false;
+    char *r = NULL;
 
     /* Ignore leading spaces */
     for (c = *str; *c; c++) {
@@ -88,24 +89,36 @@ char *ssh_config_get_token(char **str)
     /* If we start with quote, return the whole quoted block */
     if (*c == '\"') {
         for (r = ++c; *c; c++) {
-            if (*c == '\"') {
+            if (*c == '\"' || *c == '\n') {
                 *c = '\0';
+                c++;
+                break;
+            }
+            /* XXX Unmatched quotes extend to the end of line */
+        }
+    } else {
+        /* Otherwise terminate on space, equal or newline */
+        for (r = c; *c; c++) {
+            if (*c == '\0') {
                 goto out;
+            } else if (isblank((unsigned char)*c) || *c == '=' || *c == '\n') {
+                had_equal = (*c == '=');
+                *c = '\0';
+                c++;
+                break;
             }
         }
     }
 
-    /* Otherwise terminate on space, equal or newline */
-    for (r = c; *c; c++) {
-        if (isblank((unsigned char)*c) || *c == '=' || *c == '\n') {
-            *c = '\0';
-            goto out;
+    /* Skip any other remaining whitespace */
+    while (isblank((unsigned char)*c) || *c == '\n' || (!had_equal && *c == '=')) {
+        if (*c == '=') {
+            had_equal = true;
         }
+        c++;
     }
-
 out:
-    *str = c + 1;
-
+    *str = c;
     return r;
 }
 

@@ -274,6 +274,9 @@
 /* Define to 1 if you want to enable DH group exchange algorithms */
 #define WITH_GEX 1
 
+/* Define to 1 if you want to enable none cipher and MAC */
+/* #undef WITH_INSECURE_NONE */
+
 /* Define to 1 if you want to enable blowfish cipher support */
 /* #undef WITH_BLOWFISH_CIPHER */
 

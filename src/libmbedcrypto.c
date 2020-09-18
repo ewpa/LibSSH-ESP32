@@ -1236,6 +1236,17 @@ static void cipher_cleanup(struct ssh_cipher_struct *cipher)
 #endif /* MBEDTLS_GCM_C */
 }
 
+#ifdef WITH_INSECURE_NONE
+static void
+none_crypt(UNUSED_PARAM(struct ssh_cipher_struct *cipher),
+           void *in,
+           void *out,
+           size_t len)
+{
+    memcpy(out, in, len);
+}
+#endif /* WITH_INSECURE_NONE */
+
 static struct ssh_cipher_struct ssh_ciphertab[] = {
 #ifdef WITH_BLOWFISH_CIPHER
     {
@@ -1376,6 +1387,15 @@ static struct ssh_cipher_struct ssh_ciphertab[] = {
         .name = "chacha20-poly1305@openssh.com"
 #endif
     },
+#ifdef WITH_INSECURE_NONE
+    {
+        .name = "none",
+        .blocksize = 8,
+        .keysize = 0,
+        .encrypt = none_crypt,
+        .decrypt = none_crypt,
+    },
+#endif /* WITH_INSECURE_NONE */
     {
         .name = NULL,
         .blocksize = 0,

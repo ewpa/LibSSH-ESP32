@@ -177,34 +177,38 @@ unsigned char *ssh_packet_encrypt(ssh_session session, void *data, uint32_t len)
             crypto->hmacbuf, session->send_seq);
       memcpy(data, out, len);
   } else {
-      ctx = hmac_init(crypto->encryptMAC, hmac_digest_len(type), type);
-      if (ctx == NULL) {
-        SAFE_FREE(out);
-        return NULL;
-      }
+      if (type != SSH_HMAC_NONE) {
+          ctx = hmac_init(crypto->encryptMAC, hmac_digest_len(type), type);
+          if (ctx == NULL) {
+              SAFE_FREE(out);
+              return NULL;
+          }
 
-      if (!etm) {
-          hmac_update(ctx, (unsigned char *)&seq, sizeof(uint32_t));
-          hmac_update(ctx, data, len);
-          hmac_final(ctx, crypto->hmacbuf, &finallen);
+          if (!etm) {
+              hmac_update(ctx, (unsigned char *)&seq, sizeof(uint32_t));
+              hmac_update(ctx, data, len);
+              hmac_final(ctx, crypto->hmacbuf, &finallen);
+          }
       }
 
       cipher->encrypt(cipher, (uint8_t*)data + etm_packet_offset, out, len - etm_packet_offset);
       memcpy((uint8_t*)data + etm_packet_offset, out, len - etm_packet_offset);
 
-      if (etm) {
-          PUSH_BE_U32(data, 0, len - etm_packet_offset);
-          hmac_update(ctx, (unsigned char *)&seq, sizeof(uint32_t));
-          hmac_update(ctx, data, len);
-          hmac_final(ctx, crypto->hmacbuf, &finallen);
-      }
+      if (type != SSH_HMAC_NONE) {
+          if (etm) {
+              PUSH_BE_U32(data, 0, len - etm_packet_offset);
+              hmac_update(ctx, (unsigned char *)&seq, sizeof(uint32_t));
+              hmac_update(ctx, data, len);
+              hmac_final(ctx, crypto->hmacbuf, &finallen);
+          }
 #ifdef DEBUG_CRYPTO
-      ssh_log_hexdump("mac: ", data, len);
-      if (finallen != hmac_digest_len(type)) {
-          printf("Final len is %d\n", finallen);
-      }
-      ssh_log_hexdump("Packet hmac", crypto->hmacbuf, hmac_digest_len(type));
+          ssh_log_hexdump("mac: ", data, len);
+          if (finallen != hmac_digest_len(type)) {
+              printf("Final len is %d\n", finallen);
+          }
+          ssh_log_hexdump("Packet hmac", crypto->hmacbuf, hmac_digest_len(type));
 #endif
+      }
   }
   explicit_bzero(out, len);
   SAFE_FREE(out);

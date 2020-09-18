@@ -451,7 +451,7 @@ static void ssh_client_connection_callback(ssh_session session)
             if (dh_handshake(session) == SSH_ERROR) {
                 goto error;
             }
-            /* FALL THROUGH */
+            FALL_THROUGH;
         case SSH_SESSION_STATE_DH:
             if(session->dh_handshake_state==DH_STATE_FINISHED){
                 set_status(session,1.0f);

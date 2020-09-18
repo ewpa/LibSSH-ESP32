@@ -112,7 +112,7 @@ int pki_ed25519_key_cmp(const ssh_key k1,
         if (cmp != 0) {
             return 1;
         }
-        /* FALL THROUGH */
+        FALL_THROUGH;
     case SSH_KEY_CMP_PUBLIC:
         if (k1->ed25519_pubkey == NULL || k2->ed25519_pubkey == NULL) {
             return 1;

@@ -66,6 +66,9 @@ static struct ssh_hmac_struct ssh_hmac_tab[] = {
   { "hmac-sha2-256-etm@openssh.com", SSH_HMAC_SHA256,        true  },
   { "hmac-sha2-512-etm@openssh.com", SSH_HMAC_SHA512,        true  },
   { "hmac-md5-etm@openssh.com",      SSH_HMAC_MD5,           true  },
+#ifdef WITH_INSECURE_NONE
+  { "none",                          SSH_HMAC_NONE,          false },
+#endif /* WITH_INSECURE_NONE */
   { NULL,                            0,                      false }
 };
 

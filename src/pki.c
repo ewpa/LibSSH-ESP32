@@ -35,10 +35,6 @@
 #include "config.h"
 #include "libssh/wrapper.h"
 
-#ifdef ESP32
-#include "libssh_esp32_compat.h"
-#endif /* ESP32 */
-
 #include <errno.h>
 #include <ctype.h>
 #include <stdint.h>
@@ -60,6 +56,10 @@
 #  define unlink _unlink
 # endif /* HAVE_IO_H */
 #endif
+
+#ifdef ESP32
+#include "libssh_esp32_compat.h"
+#endif /* ESP32 */
 
 #include "libssh/libssh.h"
 #include "libssh/session.h"
@@ -1222,6 +1222,10 @@ int pki_import_privkey_buffer(enum ssh_keytypes_e type,
                 nid = pki_key_ecdsa_nid_from_name(ssh_string_get_char(i));
                 SSH_STRING_FREE(i);
                 if (nid == -1) {
+                    ssh_string_burn(e);
+                    SSH_STRING_FREE(e);
+                    ssh_string_burn(exp);
+                    SSH_STRING_FREE(exp);
                     goto fail;
                 }
 
@@ -1377,6 +1381,8 @@ static int pki_import_pubkey_buffer(ssh_buffer buffer,
                 nid = pki_key_ecdsa_nid_from_name(ssh_string_get_char(i));
                 SSH_STRING_FREE(i);
                 if (nid == -1) {
+                    ssh_string_burn(e);
+                    SSH_STRING_FREE(e);
                     goto fail;
                 }
 

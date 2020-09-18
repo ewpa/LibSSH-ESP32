@@ -295,7 +295,7 @@ ssh_config_match(char *value, const char *pattern, bool negate)
     return result;
 }
 
-//#ifdef _WIN32
+#ifdef ESP32
 static int
 ssh_match_exec(ssh_session session, const char *command, bool negate)
 {
@@ -307,112 +307,115 @@ ssh_match_exec(ssh_session session, const char *command, bool negate)
             command);
     return 0;
 }
-//#else /* _WIN32 */
-//
-//static int
-//ssh_exec_shell(char *cmd)
-//{
-//    char *shell = NULL;
-//    pid_t pid;
-//    int status, devnull, rc;
-//
-//    shell = getenv("SHELL");
-//    if (shell == NULL || shell[0] == '\0') {
-//        shell = (char *)"/bin/sh";
-//    }
-//
-//    rc = access(shell, X_OK);
-//    if (rc != 0) {
-//        SSH_LOG(SSH_LOG_WARN, "The shell '%s' is not executable", shell);
-//        return -1;
-//    }
-//
-//    /* Need this to redirect subprocess stdin/out */
-//    devnull = open("/dev/null", O_RDWR);
-//    if (devnull == -1) {
-//        SSH_LOG(SSH_LOG_WARN, "Failed to open(/dev/null): %s", strerror(errno));
-//        return -1;
-//    }
-//
-//    SSH_LOG(SSH_LOG_DEBUG, "Running command '%s'", cmd);
-//    pid = fork();
-//    if (pid == 0) { /* Child */
-//        char *argv[4];
-//
-//        /* Redirect child stdin and stdout. Leave stderr */
-//        rc = dup2(devnull, STDIN_FILENO);
-//        if (rc == -1) {
-//            SSH_LOG(SSH_LOG_WARN, "dup2: %s", strerror(errno));
-//            exit(1);
-//        }
-//        rc = dup2(devnull, STDOUT_FILENO);
-//        if (rc == -1) {
-//            SSH_LOG(SSH_LOG_WARN, "dup2: %s", strerror(errno));
-//	    exit(1);
-//        }
-//        if (devnull > STDERR_FILENO) {
-//            close(devnull);
-//        }
-//
-//        argv[0] = shell;
-//        argv[1] = (char *) "-c";
-//        argv[2] = strdup(cmd);
-//        argv[3] = NULL;
-//
-//        rc = execv(argv[0], argv);
-//        if (rc == -1) {
-//            SSH_LOG(SSH_LOG_WARN, "Failed to execute command '%s': %s", cmd,
-//                    strerror(errno));
-//            /* Die with signal to make this error apparent to parent. */
-//            signal(SIGTERM, SIG_DFL);
-//            kill(getpid(), SIGTERM);
-//            _exit(1);
-//        }
-//    }
-//
-//    /* Parent */
-//    close(devnull);
-//    if (pid == -1) { /* Error */
-//        SSH_LOG(SSH_LOG_WARN, "Failed to fork child: %s", strerror(errno));
-//        return -1;
-//
-//    }
-//
-//    while (waitpid(pid, &status, 0) == -1) {
-//        if (errno != EINTR) {
-//            SSH_LOG(SSH_LOG_WARN, "waitpid failed: %s", strerror(errno));
-//            return -1;
-//        }
-//    }
-//    if (!WIFEXITED(status)) {
-//        SSH_LOG(SSH_LOG_WARN, "Command %s exitted abnormally", cmd);
-//        return -1;
-//    }
-//    SSH_LOG(SSH_LOG_TRACE, "Command '%s' returned %d", cmd, WEXITSTATUS(status));
-//    return WEXITSTATUS(status);
-//}
-//
-//static int
-//ssh_match_exec(ssh_session session, const char *command, bool negate)
-//{
-//    int rv, result = 0;
-//    char *cmd = NULL;
-//
-//    /* TODO There should be more supported expansions */
-//    cmd = ssh_path_expand_escape(session, command);
-//    rv = ssh_exec_shell(cmd);
-//    if (rv > 0 && negate == true) {
-//        result = 1;
-//    } else if (rv == 0 && negate == false) {
-//        result = 1;
-//    }
-//    SSH_LOG(SSH_LOG_TRACE, "%s 'exec' command '%s'%s (rv=%d)",
-//            result == 1 ? "Matched" : "Not matched", cmd,
-//            negate == true ? " (negated)" : "", rv);
-//    free(cmd);
-//    return result;
-//}
-//#endif  /* _WIN32 */
+#else /* _WIN32 */
+
+static int
+ssh_exec_shell(char *cmd)
+{
+    char *shell = NULL;
+    pid_t pid;
+    int status, devnull, rc;
+
+    shell = getenv("SHELL");
+    if (shell == NULL || shell[0] == '\0') {
+        shell = (char *)"/bin/sh";
+    }
+
+    rc = access(shell, X_OK);
+    if (rc != 0) {
+        SSH_LOG(SSH_LOG_WARN, "The shell '%s' is not executable", shell);
+        return -1;
+    }
+
+    /* Need this to redirect subprocess stdin/out */
+    devnull = open("/dev/null", O_RDWR);
+    if (devnull == -1) {
+        SSH_LOG(SSH_LOG_WARN, "Failed to open(/dev/null): %s", strerror(errno));
+        return -1;
+    }
+
+    SSH_LOG(SSH_LOG_DEBUG, "Running command '%s'", cmd);
+    pid = fork();
+    if (pid == 0) { /* Child */
+        char *argv[4];
+
+        /* Redirect child stdin and stdout. Leave stderr */
+        rc = dup2(devnull, STDIN_FILENO);
+        if (rc == -1) {
+            SSH_LOG(SSH_LOG_WARN, "dup2: %s", strerror(errno));
+            exit(1);
+        }
+        rc = dup2(devnull, STDOUT_FILENO);
+        if (rc == -1) {
+            SSH_LOG(SSH_LOG_WARN, "dup2: %s", strerror(errno));
+	    exit(1);
+        }
+        if (devnull > STDERR_FILENO) {
+            close(devnull);
+        }
+
+        argv[0] = shell;
+        argv[1] = (char *) "-c";
+        argv[2] = strdup(cmd);
+        argv[3] = NULL;
+
+        rc = execv(argv[0], argv);
+        if (rc == -1) {
+            SSH_LOG(SSH_LOG_WARN, "Failed to execute command '%s': %s", cmd,
+                    strerror(errno));
+            /* Die with signal to make this error apparent to parent. */
+            signal(SIGTERM, SIG_DFL);
+            kill(getpid(), SIGTERM);
+            _exit(1);
+        }
+    }
+
+    /* Parent */
+    close(devnull);
+    if (pid == -1) { /* Error */
+        SSH_LOG(SSH_LOG_WARN, "Failed to fork child: %s", strerror(errno));
+        return -1;
+
+    }
+
+    while (waitpid(pid, &status, 0) == -1) {
+        if (errno != EINTR) {
+            SSH_LOG(SSH_LOG_WARN, "waitpid failed: %s", strerror(errno));
+            return -1;
+        }
+    }
+    if (!WIFEXITED(status)) {
+        SSH_LOG(SSH_LOG_WARN, "Command %s exitted abnormally", cmd);
+        return -1;
+    }
+    SSH_LOG(SSH_LOG_TRACE, "Command '%s' returned %d", cmd, WEXITSTATUS(status));
+    return WEXITSTATUS(status);
+}
+
+static int
+ssh_match_exec(ssh_session session, const char *command, bool negate)
+{
+    int rv, result = 0;
+    char *cmd = NULL;
+
+    /* TODO There should be more supported expansions */
+    cmd = ssh_path_expand_escape(session, command);
+    if (cmd == NULL) {
+        return 0;
+    }
+    rv = ssh_exec_shell(cmd);
+    if (rv > 0 && negate == true) {
+        result = 1;
+    } else if (rv == 0 && negate == false) {
+        result = 1;
+    }
+    SSH_LOG(SSH_LOG_TRACE, "%s 'exec' command '%s'%s (rv=%d)",
+            result == 1 ? "Matched" : "Not matched", cmd,
+            negate == true ? " (negated)" : "", rv);
+    free(cmd);
+    return result;
+}
+#endif  /* _WIN32 */
 
 /* @brief: Parse the ProxyJump configuration line and if parsing,
  * stores the result in the configuration option

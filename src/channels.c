@@ -396,7 +396,7 @@ static int grow_window(ssh_session session,
                        ssh_channel channel,
                        uint32_t minimumsize)
 {
-  uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBEGIN;
+  uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBASE;
   int rc;
 
   if(new_window <= channel->local_window){
@@ -2934,14 +2934,15 @@ int ssh_channel_read_timeout(ssh_channel channel,
   if (session->session_state == SSH_SESSION_STATE_ERROR) {
       return SSH_ERROR;
   }
+  /* If the server closed the channel properly, there is nothing to do */
+  if (channel->remote_eof && ssh_buffer_get_len(stdbuf) == 0) {
+      return 0;
+  }
   if (channel->state == SSH_CHANNEL_STATE_CLOSED) {
       ssh_set_error(session,
                     SSH_FATAL,
                     "Remote channel is closed.");
       return SSH_ERROR;
-  }
-  if (channel->remote_eof && ssh_buffer_get_len(stdbuf) == 0) {
-    return 0;
   }
   len = ssh_buffer_get_len(stdbuf);
   /* Read count bytes if len is greater, everything otherwise */
@@ -3097,7 +3098,7 @@ int ssh_channel_poll_timeout(ssh_channel channel, int timeout, int is_stderr)
     size_t len;
     int rc;
 
-    if(channel == NULL) {
+    if (channel == NULL) {
         return SSH_ERROR;
     }
 
@@ -3115,8 +3116,14 @@ int ssh_channel_poll_timeout(ssh_channel channel, int timeout, int is_stderr)
                                         ssh_channel_read_termination,
                                         &ctx);
     if (rc == SSH_ERROR ||
-       session->session_state == SSH_SESSION_STATE_ERROR) {
+        session->session_state == SSH_SESSION_STATE_ERROR) {
         rc = SSH_ERROR;
+        goto out;
+    } else if (rc == SSH_AGAIN) {
+        /* If the above timeout expired, it is ok and we do not need to
+         * attempt to check the read buffer. The calling functions do not
+         * expect us to return SSH_AGAIN either here. */
+        rc = SSH_OK;
         goto out;
     }
     len = ssh_buffer_get_len(stdbuf);
