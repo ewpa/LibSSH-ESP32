@@ -1753,6 +1753,8 @@ int ssh_tmpname(char *template)
 {
     char *tmp = NULL;
     size_t i = 0;
+    int rc = 0;
+    uint8_t random[6];
 
     if (template == NULL) {
         goto err;
@@ -1771,17 +1773,18 @@ int ssh_tmpname(char *template)
         }
     }
 
-    srand(time(NULL));
+    rc = ssh_get_random(random, 6, 0);
+    if (!rc) {
+        SSH_LOG(SSH_LOG_WARNING,
+                "Could not generate random data\n");
+        goto err;
+    }
 
-    for (i = 0; i < 6; ++i) {
-#ifdef _WIN32
-        /* in win32 MAX_RAND is 32767, thus we can not shift that far,
-         * otherwise the last three chars are 0 */
-        int hexdigit = (rand() >> (i * 2)) & 0x1f;
-#else
-        int hexdigit = (rand() >> (i * 5)) & 0x1f;
-#endif
-        tmp[i] = hexdigit > 9 ? hexdigit + 'a' - 10 : hexdigit + '0';
+    for (i = 0; i < 6; i++) {
+        /* Limit the random[i] < 32 */
+        random[i] &= 0x1f;
+        /* For values from 0 to 9 use numbers, otherwise use letters */
+        tmp[i] = random[i] > 9 ? random[i] + 'a' - 10 : random[i] + '0';
     }
 
     return 0;
