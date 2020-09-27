@@ -4,9 +4,12 @@ ESP32 SSH client/server on Arduino
 This is a port of the excellent libssh.org library to an Arduino library for
 the ESP32 microcontroller.
 
-It lets you run an SSH server and SSH client on your ESP32 and use it over
-WiFi and Ethernet.  Write your code and add the following include and
-initialization lines to your sketch:
+It lets you run an SSH server, SSH client, and SCP client on your ESP32 and
+use it over WiFi and Ethernet.  Examples are provided for each of these
+functions, as well as an over the air (OTA) flashing example.
+
+To use, write your code and add the following include and initialization lines
+to your sketch:
 
     #include "libssh_esp32.h"
     libssh_begin();
