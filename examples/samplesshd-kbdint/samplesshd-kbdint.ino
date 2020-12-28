@@ -25,7 +25,8 @@ const char *configSTASSID = "YourWiFiSSID";
 const char *configSTAPSK = "YourWiFiPSK";
 
 // The command line you would use to run this from a shell prompt.
-#define EX_CMD "samplesshd-kbdint", "::"
+#define EX_CMD "samplesshd-kbdint", "--hostkey", "/spiffs/.ssh/id_ed25519", \
+               "::"
 
 // SSH key storage location.
 #define KEYS_FOLDER "/spiffs/"
