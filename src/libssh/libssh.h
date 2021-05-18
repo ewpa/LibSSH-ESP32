@@ -68,6 +68,7 @@
 #else /* _WIN32 */
  #include <sys/select.h> /* for fd_set * */
  #include <netdb.h>
+ #undef IPADDR_NONE
 #endif /* _WIN32 */
 
 #define SSH_STRINGIFY(s) SSH_TOSTRING(s)
