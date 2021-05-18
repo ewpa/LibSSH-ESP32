@@ -1,5 +1,11 @@
+#ifndef HAVE_STRTOULL
 #define HAVE_STRTOULL
+#endif
+
+#ifndef HAVE_COMPILER__FUNC__
 #define HAVE_COMPILER__FUNC__
+#endif
+
 /*
  * This file is part of the SSH Library
  *

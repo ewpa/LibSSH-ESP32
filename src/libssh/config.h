@@ -201,7 +201,7 @@
 /* #undef HAVE_HTONLL */
 
 /* Define to 1 if you have the `strtoull' function. */
-#define HAVE_STRTOULL 1
+// #define HAVE_STRTOULL 1
 
 /* Define to 1 if you have the `__strtoull' function. */
 /* #undef HAVE___STRTOULL */
@@ -254,7 +254,7 @@
 
 #define HAVE_GCC_VOLATILE_MEMORY_PROTECTION 1
 
-#define HAVE_COMPILER__FUNC__ 1
+// #define HAVE_COMPILER__FUNC__ 1
 #define HAVE_COMPILER__FUNCTION__ 1
 
 /* #undef HAVE_GCC_BOUNDED_ATTRIBUTE */
@@ -303,6 +303,14 @@
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 /* #undef WORDS_BIGENDIAN */
+
+#ifndef HAVE_STRTOULL
+#define HAVE_STRTOULL 1
+#endif
+
+#ifndef HAVE_COMPILER__FUNC__
+#define HAVE_COMPILER__FUNC__ 1
+#endif
 
 // libssh-src-upstream/include/libssh/config.h
 
