@@ -22,7 +22,7 @@
  * MA 02111-1307, USA.
  */
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +39,7 @@
 #ifdef WITH_SERVER
 #include "libssh/server.h"
 #include "libssh/bind.h"
-#include "libssh/bind_config.h"
+#include "libssh/libssh_esp32_bind_config.h"
 #endif
 
 /**

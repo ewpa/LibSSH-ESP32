@@ -23,7 +23,7 @@
 
 #include <stdbool.h>
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include "libssh/libssh.h"
 #include "libssh/libcrypto.h"
 #include "libssh/libgcrypt.h"

@@ -21,7 +21,7 @@
 #ifndef LIBCRYPTO_H_
 #define LIBCRYPTO_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #ifdef HAVE_LIBCRYPTO
 

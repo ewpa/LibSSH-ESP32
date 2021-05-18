@@ -21,7 +21,7 @@
 #ifndef LIBGCRYPT_H_
 #define LIBGCRYPT_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #ifdef HAVE_LIBGCRYPT
 

@@ -21,7 +21,7 @@
 #ifndef DH_H_
 #define DH_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include "libssh/crypto.h"
 
