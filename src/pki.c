@@ -32,7 +32,7 @@
  * @{
  */
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include "libssh/wrapper.h"
 
 #include <errno.h>

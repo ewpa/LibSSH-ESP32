@@ -22,7 +22,7 @@
  */
 
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <errno.h>
 #include <fcntl.h>

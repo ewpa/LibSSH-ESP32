@@ -29,7 +29,7 @@
 #include "libssh/auth.h"
 #include "libssh/channels.h"
 #include "libssh/poll.h"
-#include "libssh/config.h"
+#include "libssh/libssh_esp32_config.h"
 #include "libssh/misc.h"
 
 /* These are the different states a SSH session can be into its life */

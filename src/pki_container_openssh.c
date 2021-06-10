@@ -26,7 +26,7 @@
  * @{
  */
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <ctype.h>
 #include <string.h>

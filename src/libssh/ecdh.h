@@ -21,7 +21,7 @@
 #ifndef ECDH_H_
 #define ECDH_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include "libssh/callbacks.h"
 
 #ifdef HAVE_LIBCRYPTO

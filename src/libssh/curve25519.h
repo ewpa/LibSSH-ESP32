@@ -21,7 +21,7 @@
 #ifndef CURVE25519_H_
 #define CURVE25519_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include "libssh.h"
 
 #ifdef WITH_NACL

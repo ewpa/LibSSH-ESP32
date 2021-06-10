@@ -35,7 +35,7 @@
 
 #ifndef _WIN32
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <stdlib.h>
 #include <errno.h>

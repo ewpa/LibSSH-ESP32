@@ -21,7 +21,7 @@
 #ifndef POLL_H_
 #define POLL_H_
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #ifdef HAVE_POLL
 

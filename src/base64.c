@@ -22,7 +22,7 @@
  */
 
 /* just the dirtiest part of code i ever made */
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <stdio.h>
 
