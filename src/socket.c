@@ -233,8 +233,8 @@ int ssh_socket_pollcallback(struct ssh_poll_handle_struct *p,
                             void *v_s)
 {
     ssh_socket s = (ssh_socket)v_s;
-    char buffer[MAX_BUF_SIZE];
-    ssize_t nread;
+    void *buffer = NULL;
+    ssize_t nread = 0;
     int rc;
     int err = 0;
     socklen_t errlen = sizeof(err);
@@ -275,8 +275,12 @@ int ssh_socket_pollcallback(struct ssh_poll_handle_struct *p,
     }
     if ((revents & POLLIN) && s->state == SSH_SOCKET_CONNECTED) {
         s->read_wontblock = 1;
-        nread = ssh_socket_unbuffered_read(s, buffer, sizeof(buffer));
+        buffer = ssh_buffer_allocate(s->in_buffer, MAX_BUF_SIZE);
+        if (buffer) {
+            nread = ssh_socket_unbuffered_read(s, buffer, MAX_BUF_SIZE);
+        }
         if (nread < 0) {
+            ssh_buffer_pass_bytes_end(s->in_buffer, MAX_BUF_SIZE);
             if (p != NULL) {
                 ssh_poll_remove_events(p, POLLIN);
             }
@@ -288,6 +292,10 @@ int ssh_socket_pollcallback(struct ssh_poll_handle_struct *p,
             }
             return -2;
         }
+
+        /* Rollback the unused space */
+        ssh_buffer_pass_bytes_end(s->in_buffer, MAX_BUF_SIZE - nread);
+
         if (nread == 0) {
             if (p != NULL) {
                 ssh_poll_remove_events(p, POLLIN);
@@ -304,11 +312,7 @@ int ssh_socket_pollcallback(struct ssh_poll_handle_struct *p,
             s->session->socket_counter->in_bytes += nread;
         }
 
-        /* Bufferize the data and then call the callback */
-        rc = ssh_buffer_add_data(s->in_buffer, buffer, nread);
-        if (rc < 0) {
-            return -1;
-        }
+        /* Call the callback */
         if (s->callbacks != NULL && s->callbacks->data != NULL) {
             do {
                 nread = s->callbacks->data(ssh_buffer_get(s->in_buffer),

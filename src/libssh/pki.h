@@ -129,12 +129,16 @@ enum ssh_digest_e ssh_key_hash_from_name(const char *name);
 #define is_cert_type(kt)\
       ((kt) == SSH_KEYTYPE_DSS_CERT01 ||\
        (kt) == SSH_KEYTYPE_RSA_CERT01 ||\
+       (kt) == SSH_KEYTYPE_SK_ECDSA_CERT01 ||\
+       (kt) == SSH_KEYTYPE_SK_ED25519_CERT01 ||\
       ((kt) >= SSH_KEYTYPE_ECDSA_P256_CERT01 &&\
        (kt) <= SSH_KEYTYPE_ED25519_CERT01))
 
 /* SSH Signature Functions */
 ssh_signature ssh_signature_new(void);
 void ssh_signature_free(ssh_signature sign);
+#define SSH_SIGNATURE_FREE(x) \
+    do { ssh_signature_free(x); x = NULL; } while(0)
 
 int ssh_pki_export_signature_blob(const ssh_signature sign,
                                   ssh_string *sign_blob);

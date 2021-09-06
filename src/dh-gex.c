@@ -263,6 +263,8 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_reply)
         bignum_safe_free(server_pubkey);
         goto error;
     }
+    /* The ownership was passed to the crypto structure */
+    server_pubkey = NULL;
 
     rc = ssh_dh_import_next_pubkey_blob(session, pubkey_blob);
     SSH_STRING_FREE(pubkey_blob);
@@ -293,6 +295,7 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_reply)
 
     return SSH_PACKET_USED;
 error:
+    SSH_STRING_FREE(pubkey_blob);
     ssh_dh_cleanup(session->next_crypto);
     session->session_state = SSH_SESSION_STATE_ERROR;
 
@@ -486,7 +489,8 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
  * @param[out] g generator
  * @return SSH_OK on success, SSH_ERROR otherwise.
  */
-static int ssh_retrieve_dhgroup(uint32_t pmin,
+static int ssh_retrieve_dhgroup(char *moduli_file,
+                                uint32_t pmin,
                                 uint32_t pn,
                                 uint32_t pmax,
                                 size_t *size,
@@ -505,7 +509,11 @@ static int ssh_retrieve_dhgroup(uint32_t pmin,
         return ssh_fallback_group(pmax, p, g);
     }
 
-    moduli = fopen(MODULI_FILE, "r");
+    if (moduli_file != NULL)
+        moduli = fopen(moduli_file, "r");
+    else
+        moduli = fopen(MODULI_FILE, "r");
+
     if (moduli == NULL) {
         SSH_LOG(SSH_LOG_WARNING,
                 "Unable to open moduli file: %s",
@@ -624,7 +632,8 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
             pn = pmin;
         }
     }
-    rc = ssh_retrieve_dhgroup(pmin,
+    rc = ssh_retrieve_dhgroup(session->opts.moduli_file,
+                              pmin,
                               pn,
                               pmax,
                               &size,

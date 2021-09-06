@@ -689,88 +689,93 @@ int ssh_get_openssh_version(ssh_session session) {
  *
  * @param[in]  session  The SSH session to use.
  */
-void ssh_disconnect(ssh_session session) {
-  struct ssh_iterator *it;
-  int rc;
+void
+ssh_disconnect(ssh_session session)
+{
+    struct ssh_iterator *it;
+    int rc;
 
-  if (session == NULL) {
-    return;
-  }
-
-  if (session->socket != NULL && ssh_socket_is_open(session->socket)) {
-    rc = ssh_buffer_pack(session->out_buffer,
-                         "bdss",
-                         SSH2_MSG_DISCONNECT,
-                         SSH2_DISCONNECT_BY_APPLICATION,
-                         "Bye Bye",
-                         ""); /* language tag */
-    if (rc != SSH_OK){
-      ssh_set_error_oom(session);
-      goto error;
+    if (session == NULL) {
+        return;
     }
 
-    ssh_packet_send(session);
-    ssh_socket_close(session->socket);
-  }
+    if (session->socket != NULL && ssh_socket_is_open(session->socket)) {
+        rc = ssh_buffer_pack(session->out_buffer,
+                             "bdss",
+                             SSH2_MSG_DISCONNECT,
+                             SSH2_DISCONNECT_BY_APPLICATION,
+                             "Bye Bye",
+                             ""); /* language tag */
+        if (rc != SSH_OK) {
+            ssh_set_error_oom(session);
+            goto error;
+        }
+
+        ssh_packet_send(session);
+        ssh_socket_close(session->socket);
+    }
+
 error:
-  session->recv_seq = 0;
-  session->send_seq = 0;
-  session->alive = 0;
-  if (session->socket != NULL){
-    ssh_socket_reset(session->socket);
-  }
-  session->opts.fd = SSH_INVALID_SOCKET;
-  session->session_state=SSH_SESSION_STATE_DISCONNECTED;
-
-  while ((it=ssh_list_get_iterator(session->channels)) != NULL) {
-    ssh_channel_do_free(ssh_iterator_value(ssh_channel,it));
-    ssh_list_remove(session->channels, it);
-  }
-  if(session->current_crypto){
-    crypto_free(session->current_crypto);
-    session->current_crypto=NULL;
-  }
-  if (session->next_crypto) {
-    crypto_free(session->next_crypto);
-    session->next_crypto = crypto_new();
-    if (session->next_crypto == NULL) {
-      ssh_set_error_oom(session);
+    session->recv_seq = 0;
+    session->send_seq = 0;
+    session->alive = 0;
+    if (session->socket != NULL){
+        ssh_socket_reset(session->socket);
     }
-  }
-  if (session->in_buffer) {
-    ssh_buffer_reinit(session->in_buffer);
-  }
-  if (session->out_buffer) {
-    ssh_buffer_reinit(session->out_buffer);
-  }
-  if (session->in_hashbuf) {
-    ssh_buffer_reinit(session->in_hashbuf);
-  }
-  if (session->out_hashbuf) {
-    ssh_buffer_reinit(session->out_hashbuf);
-  }
-  session->auth.supported_methods = 0;
-  SAFE_FREE(session->serverbanner);
-  SAFE_FREE(session->clientbanner);
+    session->opts.fd = SSH_INVALID_SOCKET;
+    session->session_state = SSH_SESSION_STATE_DISCONNECTED;
+    session->pending_call_state = SSH_PENDING_CALL_NONE;
 
-  if(session->ssh_message_list){
-    ssh_message msg;
-    while((msg=ssh_list_pop_head(ssh_message ,session->ssh_message_list))
-        != NULL){
-      ssh_message_free(msg);
+    while ((it = ssh_list_get_iterator(session->channels)) != NULL) {
+        ssh_channel_do_free(ssh_iterator_value(ssh_channel, it));
+        ssh_list_remove(session->channels, it);
     }
-    ssh_list_free(session->ssh_message_list);
-    session->ssh_message_list=NULL;
-  }
+    if (session->current_crypto) {
+      crypto_free(session->current_crypto);
+      session->current_crypto = NULL;
+    }
+    if (session->next_crypto) {
+        crypto_free(session->next_crypto);
+        session->next_crypto = crypto_new();
+        if (session->next_crypto == NULL) {
+            ssh_set_error_oom(session);
+        }
+    }
+    if (session->in_buffer) {
+        ssh_buffer_reinit(session->in_buffer);
+    }
+    if (session->out_buffer) {
+        ssh_buffer_reinit(session->out_buffer);
+    }
+    if (session->in_hashbuf) {
+        ssh_buffer_reinit(session->in_hashbuf);
+    }
+    if (session->out_hashbuf) {
+        ssh_buffer_reinit(session->out_hashbuf);
+    }
+    session->auth.supported_methods = 0;
+    SAFE_FREE(session->serverbanner);
+    SAFE_FREE(session->clientbanner);
 
-  if (session->packet_callbacks){
-    ssh_list_free(session->packet_callbacks);
-    session->packet_callbacks=NULL;
-  }
+    if (session->ssh_message_list) {
+        ssh_message msg = NULL;
+
+        while ((msg = ssh_list_pop_head(ssh_message,
+                                        session->ssh_message_list)) != NULL) {
+              ssh_message_free(msg);
+        }
+        ssh_list_free(session->ssh_message_list);
+        session->ssh_message_list = NULL;
+    }
+
+    if (session->packet_callbacks) {
+        ssh_list_free(session->packet_callbacks);
+        session->packet_callbacks = NULL;
+    }
 }
 
 const char *ssh_copyright(void) {
-    return SSH_STRINGIFY(LIBSSH_VERSION) " (c) 2003-2019 "
+    return SSH_STRINGIFY(LIBSSH_VERSION) " (c) 2003-2021 "
            "Aris Adamantiadis, Andreas Schneider "
            "and libssh contributors. "
            "Distributed under the LGPL, please refer to COPYING "

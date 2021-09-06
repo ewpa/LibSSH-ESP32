@@ -116,26 +116,8 @@
 
 /*************************** FUNCTIONS ***************************/
 
-/* Define to 1 if you have the `EVP_aes128_ctr' function. */
-/* #undef HAVE_OPENSSL_EVP_AES_CTR */
-
-/* Define to 1 if you have the `EVP_aes128_cbc' function. */
-/* #undef HAVE_OPENSSL_EVP_AES_CBC */
-
-/* Define to 1 if you have the `EVP_aes128_gcm' function. */
-/* #undef HAVE_OPENSSL_EVP_AES_GCM */
-
 /* Define to 1 if you have the `EVP_chacha20' function. */
 /* #undef HAVE_OPENSSL_EVP_CHACHA20 */
-
-/* Define to 1 if you have the `CRYPTO_THREADID_set_callback' function. */
-/* #undef HAVE_OPENSSL_CRYPTO_THREADID_SET_CALLBACK */
-
-/* Define to 1 if you have the `CRYPTO_ctr128_encrypt' function. */
-/* #undef HAVE_OPENSSL_CRYPTO_CTR128_ENCRYPT */
-
-/* Define to 1 if you have the `EVP_CIPHER_CTX_new' function. */
-/* #undef HAVE_OPENSSL_EVP_CIPHER_CTX_NEW */
 
 /* Define to 1 if you have the `EVP_KDF_CTX_new_id' function. */
 /* #undef HAVE_OPENSSL_EVP_KDF_CTX_NEW_ID */
@@ -210,7 +192,7 @@
 /* #undef HAVE__STRTOUI64 */
 
 /* Define to 1 if you have the `glob' function. */
-// #undef HAVE_GLOB
+#define HAVE_GLOB 1
 
 /* Define to 1 if you have the `explicit_bzero' function. */
 // #undef HAVE_EXPLICIT_BZERO

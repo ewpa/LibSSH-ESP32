@@ -129,6 +129,8 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys){
     }
 
     rc = ssh_pki_import_signature_blob(sig_blob, server_key, &sig);
+    ssh_string_burn(sig_blob);
+    SSH_STRING_FREE(sig_blob);
     if (rc != SSH_OK) {
         goto error;
     }
@@ -152,9 +154,7 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys){
                                   server_key,
                                   session->next_crypto->secret_hash,
                                   session->next_crypto->digest_len);
-    ssh_string_burn(sig_blob);
-    SSH_STRING_FREE(sig_blob);
-    ssh_signature_free(sig);
+    SSH_SIGNATURE_FREE(sig);
     if (rc == SSH_ERROR) {
       goto error;
     }
@@ -170,6 +170,9 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys){
   session->ssh_connection_callback(session);
   return SSH_PACKET_USED;
 error:
+  SSH_SIGNATURE_FREE(sig);
+  ssh_string_burn(sig_blob);
+  SSH_STRING_FREE(sig_blob);
   session->session_state = SSH_SESSION_STATE_ERROR;
   return SSH_PACKET_USED;
 }

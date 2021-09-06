@@ -737,7 +737,7 @@ int ssh_buffer_get_u64(struct ssh_buffer_struct *buffer, uint64_t *data){
 }
 
 /**
- * @brief Valdiates that the given length can be obtained from the buffer.
+ * @brief Validates that the given length can be obtained from the buffer.
  *
  * @param[in]  buffer  The buffer to read from.
  *

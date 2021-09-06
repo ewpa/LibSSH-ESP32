@@ -845,8 +845,13 @@ ssh_string pki_signature_to_blob(const ssh_signature sig)
                 return NULL;
             }
 
-            ssh_string_fill(sig_blob, ssh_buffer_get(b), ssh_buffer_get_len(b));
+            rc = ssh_string_fill(sig_blob, ssh_buffer_get(b), ssh_buffer_get_len(b));
             SSH_BUFFER_FREE(b);
+            if (rc < 0) {
+                SSH_STRING_FREE(sig_blob);
+                return NULL;
+            }
+
             break;
         }
         case SSH_KEYTYPE_ED25519:
@@ -886,7 +891,7 @@ static ssh_signature pki_signature_from_rsa_blob(const ssh_key pubkey, const
         goto errout;
     }
 #ifdef DEBUG_CRYPTO
-    SSH_LOG(SSH_LOG_WARN, "RSA signature len: %lu", (unsigned long)len);
+    SSH_LOG(SSH_LOG_DEBUG, "RSA signature len: %lu", (unsigned long)len);
     ssh_log_hexdump("RSA signature", ssh_string_data(sig_blob), len);
 #endif
 
@@ -1089,9 +1094,13 @@ static ssh_string rsa_do_sign_hash(const unsigned char *digest,
         return NULL;
     }
 
-    ssh_string_fill(sig_blob, sig, slen);
+    ok = ssh_string_fill(sig_blob, sig, slen);
     explicit_bzero(sig, slen);
     SAFE_FREE(sig);
+    if (ok < 0) {
+        SSH_STRING_FREE(sig_blob);
+        return NULL;
+    }
 
     return sig_blob;
 }

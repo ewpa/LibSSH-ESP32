@@ -251,7 +251,8 @@ static int agent_decode_reply(struct ssh_session_struct *session, int type) {
 static int agent_talk(struct ssh_session_struct *session,
     struct ssh_buffer_struct *request, struct ssh_buffer_struct *reply) {
   uint32_t len = 0;
-  uint8_t payload[1024] = {0};
+  uint8_t tmpbuf[4];
+  uint8_t *payload = tmpbuf;
 
   len = ssh_buffer_get_len(request);
   SSH_LOG(SSH_LOG_TRACE, "Request length: %u", len);
@@ -287,21 +288,18 @@ static int agent_talk(struct ssh_session_struct *session,
   }
   SSH_LOG(SSH_LOG_TRACE, "Response length: %u", len);
 
-  while (len > 0) {
-    size_t n = len;
-    if (n > sizeof(payload)) {
-      n = sizeof(payload);
-    }
-    if (atomicio(session->agent, payload, n, 1) != n) {
-      SSH_LOG(SSH_LOG_WARN,
-          "Error reading response from authentication socket.");
-      return -1;
-    }
-    if (ssh_buffer_add_data(reply, payload, n) < 0) {
-      SSH_LOG(SSH_LOG_WARN, "Not enough space");
-      return -1;
-    }
-    len -= n;
+  payload = ssh_buffer_allocate(reply, len);
+  if (payload == NULL) {
+    SSH_LOG(SSH_LOG_WARN, "Not enough space");
+    return -1;
+  }
+
+  if (atomicio(session->agent, payload, len, 1) != len) {
+    SSH_LOG(SSH_LOG_WARN,
+        "Error reading response from authentication socket.");
+    /* Rollback the unused space */
+    ssh_buffer_pass_bytes_end(reply, len);
+    return -1;
   }
 
   return 0;

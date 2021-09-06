@@ -48,7 +48,9 @@
 #include "libssh/misc.h"
 #include "libssh/options.h"
 
+#ifndef MAX_LINE_SIZE
 #define MAX_LINE_SIZE 1024
+#endif
 
 struct ssh_config_keyword_table_s {
   const char *name;
@@ -555,6 +557,7 @@ ssh_config_parse_line(ssh_session session,
       opcode != SOC_HOST &&
       opcode != SOC_MATCH &&
       opcode != SOC_INCLUDE &&
+      opcode != SOC_IDENTITY &&
       opcode > SOC_UNSUPPORTED) { /* Ignore all unknown types here */
       /* Skip all the options that were already applied */
       if (seen[opcode] != 0) {
@@ -1169,4 +1172,58 @@ int ssh_config_parse_file(ssh_session session, const char *filename)
 
     fclose(f);
     return 0;
+}
+
+/* @brief Parse configuration string and set the options to the given session
+ *
+ * @params[in] session   The ssh session
+ * @params[in] input     Null terminated string containing the configuration
+ *
+ * @returns    SSH_OK on successful parsing the configuration string,
+ *             SSH_ERROR on error
+ */
+int ssh_config_parse_string(ssh_session session, const char *input)
+{
+    char line[MAX_LINE_SIZE] = {0};
+    const char *c = input, *line_start = input;
+    unsigned int line_num = 0, line_len;
+    int parsing, rv;
+
+    SSH_LOG(SSH_LOG_DEBUG, "Reading configuration data from string:");
+    SSH_LOG(SSH_LOG_DEBUG, "START\n%s\nEND", input);
+
+    parsing = 1;
+    while (1) {
+        line_num++;
+        line_start = c;
+        c = strchr(line_start, '\n');
+        if (c == NULL) {
+            /* if there is no newline in the end of the string */
+            c = strchr(line_start, '\0');
+        }
+        if (c == NULL) {
+            /* should not happen, would mean a string without trailing '\0' */
+            SSH_LOG(SSH_LOG_WARN, "No trailing '\\0' in config string");
+            return SSH_ERROR;
+        }
+        line_len = c - line_start;
+        if (line_len > MAX_LINE_SIZE - 1) {
+            SSH_LOG(SSH_LOG_WARN, "Line %u too long: %u characters",
+                    line_num, line_len);
+            return SSH_ERROR;
+        }
+        memcpy(line, line_start, line_len);
+        line[line_len] = '\0';
+        SSH_LOG(SSH_LOG_DEBUG, "Line %u: %s", line_num, line);
+        rv = ssh_config_parse_line(session, line, line_num, &parsing);
+        if (rv < 0) {
+            return SSH_ERROR;
+        }
+        if (*c == '\0') {
+            break;
+        }
+        c++;
+    }
+
+    return SSH_OK;
 }

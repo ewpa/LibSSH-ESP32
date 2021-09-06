@@ -361,6 +361,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dh_reply){
   rc = ssh_dh_keypair_set_keys(crypto->dh_ctx, DH_SERVER_KEYPAIR,
                                NULL, server_pubkey);
   if (rc != SSH_OK) {
+      SSH_STRING_FREE(pubkey_blob);
       bignum_safe_free(server_pubkey);
       goto error;
   }

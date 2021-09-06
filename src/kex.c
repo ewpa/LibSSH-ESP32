@@ -75,18 +75,9 @@
 
 #elif defined(HAVE_LIBCRYPTO)
 # ifdef HAVE_OPENSSL_AES_H
-#  ifdef HAVE_OPENSSL_EVP_AES_GCM
-#   define GCM "aes256-gcm@openssh.com,aes128-gcm@openssh.com,"
-#  else
-#   define GCM ""
-#  endif /* HAVE_OPENSSL_EVP_AES_GCM */
-#  ifdef BROKEN_AES_CTR
-#   define AES GCM
-#   define AES_CBC "aes256-cbc,aes192-cbc,aes128-cbc,"
-#  else /* BROKEN_AES_CTR */
-#   define AES GCM "aes256-ctr,aes192-ctr,aes128-ctr,"
-#   define AES_CBC "aes256-cbc,aes192-cbc,aes128-cbc,"
-#  endif /* BROKEN_AES_CTR */
+#  define GCM "aes256-gcm@openssh.com,aes128-gcm@openssh.com,"
+#  define AES GCM "aes256-ctr,aes192-ctr,aes128-ctr,"
+#  define AES_CBC "aes256-cbc,aes192-cbc,aes128-cbc,"
 # else /* HAVE_OPENSSL_AES_H */
 #  define AES ""
 #  define AES_CBC ""
@@ -168,16 +159,17 @@
 
 #define CHACHA20 "chacha20-poly1305@openssh.com,"
 
-#define KEY_EXCHANGE \
+#define DEFAULT_KEY_EXCHANGE \
     CURVE25519 \
     ECDH \
     "diffie-hellman-group18-sha512,diffie-hellman-group16-sha512," \
     GEX_SHA256 \
-    "diffie-hellman-group14-sha256," \
-    "diffie-hellman-group14-sha1,diffie-hellman-group1-sha1"
+    "diffie-hellman-group14-sha256" \
+
 #define KEY_EXCHANGE_SUPPORTED \
     GEX_SHA1 \
-    KEY_EXCHANGE
+    DEFAULT_KEY_EXCHANGE \
+    ",diffie-hellman-group14-sha1,diffie-hellman-group1-sha1"
 
 /* RFC 8308 */
 #define KEX_EXTENSION_CLIENT "ext-info-c"
@@ -231,12 +223,12 @@ static const char *fips_methods[] = {
 
 /* NOTE: This is a fixed API and the index is defined by ssh_kex_types_e */
 static const char *default_methods[] = {
-    KEY_EXCHANGE,
+    DEFAULT_KEY_EXCHANGE,
     DEFAULT_PUBLIC_KEY_ALGORITHMS,
-    AES DES,
-    AES DES,
-    "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1",
-    "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1",
+    AES,
+    AES,
+    "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512",
+    "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512",
     "none",
     "none",
     "",
@@ -248,8 +240,8 @@ static const char *default_methods[] = {
 static const char *supported_methods[] = {
   KEY_EXCHANGE_SUPPORTED,
   PUBLIC_KEY_ALGORITHMS,
-  CHACHA20 AES AES_CBC BLOWFISH DES_SUPPORTED NONE,
-  CHACHA20 AES AES_CBC BLOWFISH DES_SUPPORTED NONE,
+  AES AES_CBC BLOWFISH DES_SUPPORTED NONE,
+  AES AES_CBC BLOWFISH DES_SUPPORTED NONE,
   "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1" NONE,
   "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1" NONE,
   ZLIB,
@@ -754,13 +746,29 @@ int ssh_set_client_kex(ssh_session session)
     return SSH_OK;
 }
 
+static const char *ssh_find_aead_hmac(const char *cipher)
+{
+    if (cipher == NULL) {
+        return NULL;
+    } else if (strcmp(cipher, "chacha20-poly1305@openssh.com") == 0) {
+        return "aead-poly1305";
+    } else if (strcmp(cipher, "aes256-gcm@openssh.com") == 0) {
+        return "aead-gcm";
+    } else if (strcmp(cipher, "aes128-gcm@openssh.com") == 0) {
+        return "aead-gcm";
+    }
+    return NULL;
+}
+
 /** @brief Select the different methods on basis of client's and
  * server's kex messages, and watches out if a match is possible.
  */
-int ssh_kex_select_methods (ssh_session session){
+int ssh_kex_select_methods (ssh_session session)
+{
     struct ssh_kex_struct *server = &session->next_crypto->server_kex;
     struct ssh_kex_struct *client = &session->next_crypto->client_kex;
     char *ext_start = NULL;
+    const char *aead_hmac = NULL;
     int i;
 
     /* Here we should drop the  ext-info-c  from the list so we avoid matching.
@@ -772,7 +780,15 @@ int ssh_kex_select_methods (ssh_session session){
 
     for (i = 0; i < SSH_KEX_METHODS; i++) {
         session->next_crypto->kex_methods[i]=ssh_find_matching(server->methods[i],client->methods[i]);
-        if(session->next_crypto->kex_methods[i] == NULL && i < SSH_LANG_C_S){
+
+        if (i == SSH_MAC_C_S || i == SSH_MAC_S_C) {
+            aead_hmac = ssh_find_aead_hmac(session->next_crypto->kex_methods[i-2]);
+            if (aead_hmac) {
+                free(session->next_crypto->kex_methods[i]);
+                session->next_crypto->kex_methods[i] = strdup(aead_hmac);
+            }
+        }
+        if (session->next_crypto->kex_methods[i] == NULL && i < SSH_LANG_C_S){
             ssh_set_error(session,SSH_FATAL,"kex error : no match for method %s: server [%s], client [%s]",
                     ssh_kex_descriptions[i],server->methods[i],client->methods[i]);
             return SSH_ERROR;
@@ -781,31 +797,31 @@ int ssh_kex_select_methods (ssh_session session){
             session->next_crypto->kex_methods[i] = strdup("");
         }
     }
-    if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group1-sha1") == 0){
+    if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group1-sha1") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GROUP1_SHA1;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group14-sha1") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group14-sha1") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GROUP14_SHA1;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group14-sha256") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group14-sha256") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GROUP14_SHA256;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group16-sha512") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group16-sha512") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GROUP16_SHA512;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group18-sha512") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group18-sha512") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GROUP18_SHA512;
 #ifdef WITH_GEX
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group-exchange-sha1") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group-exchange-sha1") == 0){
       session->next_crypto->kex_type=SSH_KEX_DH_GEX_SHA1;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group-exchange-sha256") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "diffie-hellman-group-exchange-sha256") == 0){
         session->next_crypto->kex_type=SSH_KEX_DH_GEX_SHA256;
 #endif /* WITH_GEX */
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp256") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp256") == 0){
       session->next_crypto->kex_type=SSH_KEX_ECDH_SHA2_NISTP256;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp384") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp384") == 0){
       session->next_crypto->kex_type=SSH_KEX_ECDH_SHA2_NISTP384;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp521") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "ecdh-sha2-nistp521") == 0){
       session->next_crypto->kex_type=SSH_KEX_ECDH_SHA2_NISTP521;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "curve25519-sha256@libssh.org") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "curve25519-sha256@libssh.org") == 0){
       session->next_crypto->kex_type=SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG;
-    } else if(strcmp(session->next_crypto->kex_methods[SSH_KEX], "curve25519-sha256") == 0){
+    } else if (strcmp(session->next_crypto->kex_methods[SSH_KEX], "curve25519-sha256") == 0){
       session->next_crypto->kex_type=SSH_KEX_CURVE25519_SHA256;
     }
     SSH_LOG(SSH_LOG_INFO, "Negotiated %s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
@@ -825,7 +841,8 @@ int ssh_kex_select_methods (ssh_session session){
 
 
 /* this function only sends the predefined set of kex methods */
-int ssh_send_kex(ssh_session session, int server_kex) {
+int ssh_send_kex(ssh_session session, int server_kex)
+{
   struct ssh_kex_struct *kex = (server_kex ? &session->next_crypto->server_kex :
       &session->next_crypto->client_kex);
   ssh_string str = NULL;
@@ -1042,7 +1059,7 @@ int ssh_make_sessionid(ssh_session session)
                          ssh_buffer_get(server_hash),
                          server_pubkey_blob);
     SSH_STRING_FREE(server_pubkey_blob);
-    if(rc != SSH_OK){
+    if (rc != SSH_OK){
         goto error;
     }
 
@@ -1216,11 +1233,13 @@ int ssh_make_sessionid(ssh_session session)
         }
         memcpy(session->next_crypto->session_id, session->next_crypto->secret_hash,
                 session->next_crypto->digest_len);
+	/* Initial length is the same as secret hash */
+	session->next_crypto->session_id_len = session->next_crypto->digest_len;
     }
 #ifdef DEBUG_CRYPTO
-    printf("Session hash: \n");
+    SSH_LOG(SSH_LOG_DEBUG, "Session hash: \n");
     ssh_log_hexdump("secret hash", session->next_crypto->secret_hash, session->next_crypto->digest_len);
-    ssh_log_hexdump("session id", session->next_crypto->session_id, session->next_crypto->digest_len);
+    ssh_log_hexdump("session id", session->next_crypto->session_id, session->next_crypto->session_id_len);
 #endif
 
     rc = SSH_OK;

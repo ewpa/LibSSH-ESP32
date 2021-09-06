@@ -119,7 +119,7 @@ error:
 int ssh_scp_init(ssh_scp scp)
 {
     int rc;
-    char execbuffer[1024] = {0};
+    char execbuffer[PATH_MAX] = {0};
     char *quoted_location = NULL;
     size_t quoted_location_len = 0;
     size_t scp_location_len;
@@ -319,7 +319,7 @@ void ssh_scp_free(ssh_scp scp)
  */
 int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode)
 {
-    char buffer[1024] = {0};
+    char buffer[PATH_MAX] = {0};
     int rc;
     char *dir = NULL;
     char *perms = NULL;
@@ -456,7 +456,7 @@ int ssh_scp_leave_directory(ssh_scp scp)
 int ssh_scp_push_file64(ssh_scp scp, const char *filename, uint64_t size,
                         int mode)
 {
-    char buffer[1024] = {0};
+    char buffer[PATH_MAX] = {0};
     int rc;
     char *file = NULL;
     char *perms = NULL;
@@ -769,7 +769,7 @@ int ssh_scp_read_string(ssh_scp scp, char *buffer, size_t len)
  */
 int ssh_scp_pull_request(ssh_scp scp)
 {
-    char buffer[MAX_BUF_SIZE] = {0};
+    char buffer[PATH_MAX] = {0};
     char *mode = NULL;
     char *p, *tmp;
     uint64_t size;
@@ -881,7 +881,8 @@ error:
  */
 int ssh_scp_deny_request(ssh_scp scp, const char *reason)
 {
-    char buffer[MAX_BUF_SIZE] = {0};
+    char *buffer = NULL;
+    size_t len;
     int rc;
 
     if (scp == NULL) {
@@ -894,8 +895,15 @@ int ssh_scp_deny_request(ssh_scp scp, const char *reason)
         return SSH_ERROR;
     }
 
-    snprintf(buffer, sizeof(buffer), "%c%s\n", 2, reason);
-    rc = ssh_channel_write(scp->channel, buffer, strlen(buffer));
+    len = strlen(reason) + 3;
+    buffer = malloc(len);
+    if (buffer == NULL) {
+        return SSH_ERROR;
+    }
+
+    snprintf(buffer, len, "%c%s\n", 2, reason);
+    rc = ssh_channel_write(scp->channel, buffer, len - 1);
+    free(buffer);
     if (rc == SSH_ERROR) {
         return SSH_ERROR;
     }

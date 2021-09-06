@@ -1,7 +1,7 @@
 /*
  * This file is part of the SSH Library
  *
- * Copyright (c) 2011      Andreas Schneider <asn@cryptomilk.org>
+ * Copyright (c) 2020 by Anderson Toshiyuki Sasaki - Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,14 +18,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef _OPTIONS_H
-#define _OPTIONS_H
+#include "config.h"
+#include "libssh/crypto.h"
 
-int ssh_config_parse_file(ssh_session session, const char *filename);
-int ssh_config_parse_string(ssh_session session, const char *input);
-int ssh_options_set_algo(ssh_session session,
-                         enum ssh_kex_types_e algo,
-                         const char *list);
-int ssh_options_apply(ssh_session session);
+int secure_memcmp(const void *s1, const void *s2, size_t n)
+{
+    int rc = 0;
+    const unsigned char *p1 = s1;
+    const unsigned char *p2 = s2;
+    for (; n > 0; --n) {
+        rc |= *p1++ ^ *p2++;
+    }
+    return (rc != 0);
+}
 
-#endif /* _OPTIONS_H */

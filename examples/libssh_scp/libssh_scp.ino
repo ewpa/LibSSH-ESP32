@@ -4,7 +4,7 @@
 // Simple port of examples/libssh_scp.c over WiFi.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2020 Ewan Parker.
+// Copyright (C) 2016–2021 Ewan Parker.
 
 /* libssh_scp.c
  * Sample implementation of a SCP client
@@ -43,6 +43,10 @@ const unsigned int configSTACK = 40960;
 
 #include <libssh/libssh.h>
 #include "examples_common.h"
+
+#ifndef BUF_SIZE
+#define BUF_SIZE 4096
+#endif
 
 static char **sources;
 static int nsources;
@@ -528,10 +532,6 @@ static void location_free(struct location *loc)
                 free(loc->user);
             }
             loc->user = NULL;
-            if (loc->host) {
-                free(loc->host);
-            }
-            loc->host = NULL;
         }
         free(loc);
     }
@@ -658,7 +658,7 @@ static int open_location(struct location *loc, int flag) {
         loc->file = fopen(loc->path, flag == READ ? "r":"w");
         if (!loc->file) {
             if (errno == EISDIR) {
-                if (chdir(loc->path)) {
+                if (loc->path != NULL && chdir(loc->path)) {
                     fprintf(stderr,
                             "Error changing directory to %s: %s\n",
                             loc->path, strerror(errno));
@@ -686,7 +686,7 @@ static int do_copy(struct location *src, struct location *dest, int recursive) {
     socket_t fd;
     struct stat s;
     int w, r;
-    char buffer[16000];
+    char buffer[BUF_SIZE];
     size_t total = 0;
     mode_t mode;
     char *filename = NULL;
@@ -899,9 +899,10 @@ int ex_main(int argc, char **argv){
     int i;
     int r;
     if (opts(argc, argv) < 0) {
-        r = EXIT_FAILURE;
-        goto end;
+        return EXIT_FAILURE;
     }
+
+    ssh_init();
 
     dest = parse_location(destination);
     if (dest == NULL) {
@@ -944,6 +945,8 @@ close_dest:
     close_location(dest);
     location_free(dest);
 end:
+    ssh_finalize();
+    free(sources);
     return r;
 }
 // EXAMPLE main FINISH

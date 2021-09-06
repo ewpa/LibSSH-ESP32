@@ -255,7 +255,11 @@ int ssh_getpass(const char *prompt,
 
     /* disable nonblocking I/O */
     if (fd & O_NDELAY) {
-        fcntl(0, F_SETFL, fd & ~O_NDELAY);
+        ok = fcntl(0, F_SETFL, fd & ~O_NDELAY);
+        if (ok < 0) {
+            perror("fcntl");
+            return -1;
+        }
     }
 
     ok = ssh_gets(prompt, buf, len, verify);
@@ -267,7 +271,11 @@ int ssh_getpass(const char *prompt,
 
     /* close fd */
     if (fd & O_NDELAY) {
-        fcntl(0, F_SETFL, fd);
+        ok = fcntl(0, F_SETFL, fd);
+        if (ok < 0) {
+            perror("fcntl");
+            return -1;
+        }
     }
 
     if (!ok) {

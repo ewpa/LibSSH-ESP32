@@ -109,7 +109,7 @@
 
 #ifdef _WIN32
 char *ssh_get_user_home_dir(void) {
-  char tmp[MAX_PATH] = {0};
+  char tmp[PATH_MAX] = {0};
   char *szPath = NULL;
 
   if (SHGetSpecialFolderPathA(NULL, tmp, CSIDL_PROFILE, TRUE)) {
@@ -1109,8 +1109,9 @@ char *ssh_path_expand_tilde(const char *d) {
  */
 char *ssh_path_expand_escape(ssh_session session, const char *s) {
     char host[NI_MAXHOST];
-    char buf[MAX_BUF_SIZE];
-    char *r, *x = NULL;
+    char *buf = NULL;
+    char *r = NULL;
+    char *x = NULL;
     const char *p;
     size_t i, l;
 
@@ -1126,6 +1127,13 @@ char *ssh_path_expand_escape(ssh_session session, const char *s) {
         return NULL;
     }
 
+    buf = malloc(MAX_BUF_SIZE);
+    if (buf == NULL) {
+        ssh_set_error_oom(session);
+        free(r);
+        return NULL;
+    }
+
     p = r;
     buf[0] = '\0';
 
@@ -1135,6 +1143,7 @@ char *ssh_path_expand_escape(ssh_session session, const char *s) {
             buf[i] = *p;
             i++;
             if (i >= MAX_BUF_SIZE) {
+                free(buf);
                 free(r);
                 return NULL;
             }
@@ -1181,12 +1190,14 @@ char *ssh_path_expand_escape(ssh_session session, const char *s) {
             default:
                 ssh_set_error(session, SSH_FATAL,
                         "Wrong escape sequence detected");
+                free(buf);
                 free(r);
                 return NULL;
         }
 
         if (x == NULL) {
             ssh_set_error_oom(session);
+            free(buf);
             free(r);
             return NULL;
         }
@@ -1195,19 +1206,26 @@ char *ssh_path_expand_escape(ssh_session session, const char *s) {
         if (i >= MAX_BUF_SIZE) {
             ssh_set_error(session, SSH_FATAL,
                     "String too long");
+            free(buf);
             free(x);
             free(r);
             return NULL;
         }
         l = strlen(buf);
-        strncpy(buf + l, x, sizeof(buf) - l - 1);
+        strncpy(buf + l, x, MAX_BUF_SIZE - l - 1);
         buf[i] = '\0';
         SAFE_FREE(x);
     }
 
     free(r);
-    return strdup(buf);
-#undef MAX_BUF_SIZE
+
+    /* strip the unused space by realloc */
+    x = realloc(buf, strlen(buf) + 1);
+    if (x == NULL) {
+        ssh_set_error_oom(session);
+        free(buf);
+    }
+    return x;
 }
 
 /**

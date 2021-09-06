@@ -688,18 +688,15 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATED
-         * - session->global_req_state == SSH_CHANNEL_REQ_STATE_PENDING
          *
          * Transitions:
-         * - session->global_req_state == SSH_CHANNEL_REQ_STATE_ACCEPTED
+         * - From channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
+         * - To   channel->request_state = SSH_CHANNEL_REQ_STATE_ACCEPTED
+         *
+         * If not in a pending state, message is ignored in the callback handler.
          * */
 
         if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED) {
-            rc = SSH_PACKET_DENIED;
-            break;
-        }
-
-        if (session->global_req_state != SSH_CHANNEL_REQ_STATE_PENDING) {
             rc = SSH_PACKET_DENIED;
             break;
         }
@@ -710,18 +707,15 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATED
-         * - session->global_req_state == SSH_CHANNEL_REQ_STATE_PENDING
          *
          * Transitions:
-         * - session->global_req_state == SSH_CHANNEL_REQ_STATE_DENIED
+         * - From channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
+         * - To   channel->request_state = SSH_CHANNEL_REQ_STATE_ACCEPTED
+         *
+         * If not in a pending state, message is ignored in the callback handler.
          * */
 
         if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED) {
-            rc = SSH_PACKET_DENIED;
-            break;
-        }
-
-        if (session->global_req_state != SSH_CHANNEL_REQ_STATE_PENDING) {
             rc = SSH_PACKET_DENIED;
             break;
         }
@@ -878,10 +872,12 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATED
-         * - channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
          *
          * Transitions:
-         * - channel->request_state = SSH_CHANNEL_REQ_STATE_ACCEPTED
+         * - From channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
+         * - To   channel->request_state = SSH_CHANNEL_REQ_STATE_ACCEPTED
+         *
+         * If not in a pending state, message is ignored in the callback handler.
          * */
 
         if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED) {
@@ -895,10 +891,12 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATED
-         * - channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
          *
          * Transitions:
-         * - channel->request_state = SSH_CHANNEL_REQ_STATE_DENIED
+         * - From channel->request_state == SSH_CHANNEL_REQ_STATE_PENDING
+         * - To   channel->request_state = SSH_CHANNEL_REQ_STATE_ACCEPTED
+         *
+         * If not in a pending state, message is ignored in the callback handler.
          * */
 
         if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED) {
@@ -1424,12 +1422,14 @@ void ssh_packet_register_socket_callback(ssh_session session, ssh_socket s){
  * @brief sets the callbacks for the packet layer
  */
 void ssh_packet_set_callbacks(ssh_session session, ssh_packet_callbacks callbacks){
-  if(session->packet_callbacks == NULL){
-    session->packet_callbacks = ssh_list_new();
-  }
-  if (session->packet_callbacks != NULL) {
+    if (session->packet_callbacks == NULL) {
+        session->packet_callbacks = ssh_list_new();
+        if (session->packet_callbacks == NULL) {
+            ssh_set_error_oom(session);
+            return;
+        }
+    }
     ssh_list_append(session->packet_callbacks, callbacks);
-  }
 }
 
 /** @internal
@@ -1903,7 +1903,7 @@ ssh_packet_set_newkeys(ssh_session session,
 
     /* Both sides switched: do the actual switch now */
     if (session->next_crypto->used == SSH_DIRECTION_BOTH) {
-        size_t digest_len;
+        size_t session_id_len;
 
         if (session->current_crypto != NULL) {
             crypto_free(session->current_crypto);
@@ -1920,8 +1920,8 @@ ssh_packet_set_newkeys(ssh_session session,
             return SSH_ERROR;
         }
 
-        digest_len = session->current_crypto->digest_len;
-        session->next_crypto->session_id = malloc(digest_len);
+        session_id_len = session->current_crypto->session_id_len;
+        session->next_crypto->session_id = malloc(session_id_len);
         if (session->next_crypto->session_id == NULL) {
             ssh_set_error_oom(session);
             return SSH_ERROR;
@@ -1929,7 +1929,8 @@ ssh_packet_set_newkeys(ssh_session session,
 
         memcpy(session->next_crypto->session_id,
                session->current_crypto->session_id,
-               digest_len);
+               session_id_len);
+	session->next_crypto->session_id_len = session_id_len;
 
         return SSH_OK;
     }

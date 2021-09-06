@@ -393,6 +393,7 @@ void ssh_bind_free(ssh_bind sshbind){
 
   /* options */
   SAFE_FREE(sshbind->banner);
+  SAFE_FREE(sshbind->moduli_file);
   SAFE_FREE(sshbind->bindaddr);
   SAFE_FREE(sshbind->config_dir);
   SAFE_FREE(sshbind->pubkey_accepted_key_types);
@@ -485,8 +486,23 @@ int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd){
     }
 
     session->common.log_verbosity = sshbind->common.log_verbosity;
-    if(sshbind->banner != NULL)
-    	session->opts.custombanner = strdup(sshbind->banner);
+
+    if (sshbind->banner != NULL) {
+        session->opts.custombanner = strdup(sshbind->banner);
+        if (session->opts.custombanner == NULL) {
+            ssh_set_error_oom(sshbind);
+            return SSH_ERROR;
+        }
+    }
+
+    if (sshbind->moduli_file != NULL) {
+        session->opts.moduli_file = strdup(sshbind->moduli_file);
+        if (session->opts.moduli_file == NULL) {
+            ssh_set_error_oom(sshbind);
+            return SSH_ERROR;
+        }
+    }
+
     ssh_socket_free(session->socket);
     session->socket = ssh_socket_new(session);
     if (session->socket == NULL) {

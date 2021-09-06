@@ -40,7 +40,9 @@
 #include "libssh/server.h"
 #include "libssh/options.h"
 
+#ifndef MAX_LINE_SIZE
 #define MAX_LINE_SIZE 1024
+#endif
 
 /* Flags used for the parser state */
 #define PARSING     1
