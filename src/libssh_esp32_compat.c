@@ -59,7 +59,7 @@ struct passwd *getpwnam (const char *name)
 { return &p; }
 
 __attribute__((weak))
-int gethostname(char *name, int len)
+int gethostname(char *name, size_t len)
 {
   strncpy(name, LIBSSH_ESP32_COMPAT_HOSTNAME, len);
   return 0;
