@@ -5,7 +5,7 @@
 // The example makes an SCP connection to a defined server, pulls the firmware
 // image, and writes it to flash.
 //
-// Copyright (C) 2016–2020 Ewan Parker.
+// Copyright (C) 2016–2021 Ewan Parker.
 
 // EXAMPLE copyright START
 // Some SCP code borrowed shamelessly from libssh example libssh_scp.c
@@ -507,7 +507,7 @@ int ex_main(int argc, char **argv){
 void otaTask(void *pvParameter)
 {
   printf("ota%% Task started\n");
-  char buffer[16000];
+  char buffer[8192];
 
   const esp_partition_t *bootPart = esp_ota_get_boot_partition();
   const esp_partition_t *runPart = esp_ota_get_running_partition();
@@ -847,8 +847,10 @@ void setup()
   // Use the expected blocking I/O behavior.
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
-  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
-  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+  uart_driver_install
+    ((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+
 
   tcpip_adapter_init();
   esp_event_loop_init(event_cb, NULL);

@@ -1121,8 +1121,9 @@ void setup()
   // Use the expected blocking I/O behavior.
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
-  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
-  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+  uart_driver_install
+    ((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 
   tcpip_adapter_init();
   esp_event_loop_init(event_cb, NULL);
