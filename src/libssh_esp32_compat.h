@@ -9,6 +9,11 @@
 #ifndef LIBSSH_ESP32_COMPAT_H
 #define LIBSSH_ESP32_COMPAT_H
 
-// Nothing to see here yet.
+#include "esp_idf_version.h"
+
+#if ESP_IDF_VERSION_MAJOR < 4
+__attribute__((weak))
+int gethostname(char *name, int len);
+#endif /* ESP_IDF_VERSION_MAJOR */
 
 #endif /* LIBSSH_ESP32_COMPAT_H */
