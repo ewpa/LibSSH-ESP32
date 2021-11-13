@@ -507,7 +507,7 @@ int ex_main(int argc, char **argv){
 void otaTask(void *pvParameter)
 {
   printf("ota%% Task started\n");
-  char buffer[8192];
+  char buffer[4096];
 
   const esp_partition_t *bootPart = esp_ota_get_boot_partition();
   const esp_partition_t *runPart = esp_ota_get_running_partition();
@@ -623,7 +623,7 @@ void otaTask(void *pvParameter)
       else
       {
         currentPercent = 100 * appBytes/otaBytes;
-        if (currentPercent != previousPercent && currentPercent%1 == 0)
+        if (currentPercent != previousPercent && currentPercent%5 == 0)
         {
           printf("ota%% [%d%%] Write %d bytes, so far %d (%d kBytes/s)%s\r",
             currentPercent, scpRet, appBytes,
@@ -688,7 +688,9 @@ esp_err_t event_cb(void *ctx, system_event_t *event)
   switch(event->event_id)
   {
     case SYSTEM_EVENT_STA_START:
-      //WiFi.setHostname("esp32_ssh_server");
+      //#if ESP_IDF_VERSION_MAJOR < 4
+      //WiFi.setHostname("libssh_esp32");
+      //#endif
       printf("%% WiFi enabled with SSID=%s\n", configSTASSID);
       break;
     case SYSTEM_EVENT_STA_CONNECTED:
@@ -847,12 +849,21 @@ void setup()
   // Use the expected blocking I/O behavior.
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
+  #if ESP_IDF_VERSION_MAJOR >= 4
   uart_driver_install
     ((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
   esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+  #else
+  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+  #endif
 
-
+  #if ESP_IDF_VERSION_MAJOR >= 4
+  //WiFi.setHostname("libssh_esp32");
+  esp_netif_init();
+  #else
   tcpip_adapter_init();
+  #endif
   esp_event_loop_init(event_cb, NULL);
 
   // Stack size needs to be larger, so continue in a new task.

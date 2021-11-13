@@ -540,9 +540,14 @@ void setup()
   // Use the expected blocking I/O behavior.
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
+  #if ESP_IDF_VERSION_MAJOR >= 4
   uart_driver_install
     ((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
   esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+  #else
+  uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+  #endif
 
   // Stack size needs to be larger, so continue in a new task.
   xTaskCreatePinnedToCore(controlTask, "ctl", configSTACK, NULL,
