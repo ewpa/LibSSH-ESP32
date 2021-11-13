@@ -297,7 +297,7 @@ ssh_config_match(char *value, const char *pattern, bool negate)
     return result;
 }
 
-#ifdef ESP32
+#if defined _WIN32 || defined ESP32
 static int
 ssh_match_exec(ssh_session session, const char *command, bool negate)
 {
@@ -309,7 +309,7 @@ ssh_match_exec(ssh_session session, const char *command, bool negate)
             command);
     return 0;
 }
-#else /* _WIN32 */
+#else /* _WIN32 || ESP32 */
 
 static int
 ssh_exec_shell(char *cmd)

@@ -507,7 +507,7 @@ int ex_main(int argc, char **argv){
 void otaTask(void *pvParameter)
 {
   printf("ota%% Task started\n");
-  char buffer[16000];
+  char buffer[4096];
 
   const esp_partition_t *bootPart = esp_ota_get_boot_partition();
   const esp_partition_t *runPart = esp_ota_get_running_partition();

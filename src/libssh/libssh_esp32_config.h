@@ -192,7 +192,7 @@
 /* #undef HAVE__STRTOUI64 */
 
 /* Define to 1 if you have the `glob' function. */
-#define HAVE_GLOB 1
+// #undef HAVE_GLOB
 
 /* Define to 1 if you have the `explicit_bzero' function. */
 // #undef HAVE_EXPLICIT_BZERO

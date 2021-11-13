@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
+#include "libssh_esp32_config.h"
 #include "libssh/crypto.h"
 
 int secure_memcmp(const void *s1, const void *s2, size_t n)

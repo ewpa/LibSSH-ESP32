@@ -406,7 +406,7 @@ static int grow_window(ssh_session session,
                        ssh_channel channel,
                        uint32_t minimumsize)
 {
-  uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBASE;
+  uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBEGIN;
   int rc;
 
   if(new_window <= channel->local_window){
