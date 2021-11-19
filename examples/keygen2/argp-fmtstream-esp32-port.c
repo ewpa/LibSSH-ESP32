@@ -27,7 +27,7 @@
 #define _ARGP_FMTSTREAM_H
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#include <libssh_esp32_config.h>
 #endif
 
 #include <stdio.h>

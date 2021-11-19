@@ -4,7 +4,7 @@
 // Simple port of examples/keygen2.c on SPIFFS.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2020 Ewan Parker.
+// Copyright (C) 2016–2021 Ewan Parker.
 
 /*
  * keygen2.c - Generate SSH keys using libssh
@@ -38,7 +38,7 @@ const unsigned int configSTACK = 16384;
 #include "libssh_esp32.h"
 
 // EXAMPLE includes/defines START
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <libssh/libssh.h>
 #include <stdio.h>
@@ -540,8 +540,16 @@ void setup()
   // Use the expected blocking I/O behavior.
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
+  #if ESP_IDF_VERSION_MAJOR >= 4
+  Serial.begin(115200);
+  uart_driver_install
+    ((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
+  esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+  #else
   uart_driver_install((uart_port_t)CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
   esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+  Serial.begin(115200);
+  #endif
 
   // Stack size needs to be larger, so continue in a new task.
   xTaskCreatePinnedToCore(controlTask, "ctl", configSTACK, NULL,

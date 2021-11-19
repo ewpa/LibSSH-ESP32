@@ -41,7 +41,7 @@ const unsigned int configSTACK = 10240;
 #define HAVE_ARGP_H
 
 // EXAMPLE includes/defines START
-#include "config.h"
+#include "libssh_esp32_config.h"
 
 #include <libssh/libssh.h>
 #include <libssh/server.h>
@@ -500,8 +500,11 @@ esp_err_t event_cb(void *ctx, system_event_t *event)
   switch(event->event_id)
   {
     case SYSTEM_EVENT_STA_START:
-      //WiFi.setHostname("esp32_ssh_server");
-      printf("%% WiFi enabled with SSID=%s\n", configSTASSID);
+      //#if ESP_IDF_VERSION_MAJOR < 4
+      //WiFi.setHostname("libssh_esp32");
+      //#endif
+      Serial.print("% WiFi enabled with SSID=");
+      Serial.println(configSTASSID);
       break;
     case SYSTEM_EVENT_STA_CONNECTED:
       WiFi.enableIpV6();
@@ -514,15 +517,13 @@ esp_err_t event_cb(void *ctx, system_event_t *event)
       {
         gotIp6Addr = true;
       }
-      printf(
-        "%% IPv6 Address: %s\n", IPv6Address
-        (event->event_info.got_ip6.ip6_info.ip.addr).toString().c_str());
+      Serial.print("% IPv6 Address: ");
+      Serial.println(IPv6Address(event->event_info.got_ip6.ip6_info.ip.addr));
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
       gotIpAddr = true;
-      printf(
-        "%% IPv4 Address: %s\n", IPAddress
-        (event->event_info.got_ip.ip_info.ip.addr).toString().c_str());
+      Serial.print("% IPv4 Address: ");
+      Serial.println(IPAddress(event->event_info.got_ip.ip_info.ip.addr));
       break;
     case SYSTEM_EVENT_STA_LOST_IP:
       //gotIpAddr = false;
@@ -660,7 +661,12 @@ void setup()
 
   Serial.begin(115200);
 
+  #if ESP_IDF_VERSION_MAJOR >= 4
+  //WiFi.setHostname("libssh_esp32");
+  esp_netif_init();
+  #else
   tcpip_adapter_init();
+  #endif
   esp_event_loop_init(event_cb, NULL);
 
   // Stack size needs to be larger, so continue in a new task.

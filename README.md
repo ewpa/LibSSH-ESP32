@@ -14,14 +14,15 @@ to your sketch:
     #include "libssh_esp32.h"
     libssh_begin();
 
-This library is currently built and tested against version 1.0.4 of the ESP32
-Arduino core.  Please refer to the GIT log for the latest changes.  Further
-information on this port can be found at the following address.
+This library is currently built and tested against version 1.0.6 and 2.0.0 of
+the ESP32 Arduino core for ESP32 and ESP32-C3 boards.  Please refer to the GIT
+log for the latest changes.  Further information on this port can be found at
+the following address.
 
   https://www.ewan.cc/?q=node/157
 
 This port created by Ewan Parker on 18th April 2020.
-Last updated 6th September 2021, built with libssh commit 76b7e0e9.
+Last ported 6th September 2021, built with libssh commit 76b7e0e9.
 
 
 ```

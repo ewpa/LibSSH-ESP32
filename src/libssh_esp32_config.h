@@ -168,7 +168,7 @@
 #define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `poll' function. */
-// #undef HAVE_POLL
+#define HAVE_POLL 1
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
@@ -228,7 +228,7 @@
 #define HAVE_GCC_THREAD_LOCAL_STORAGE 1
 /* #undef HAVE_MSC_THREAD_LOCAL_STORAGE */
 
-#define HAVE_FALLTHROUGH_ATTRIBUTE 1
+// #undef HAVE_FALLTHROUGH_ATTRIBUTE
 #define HAVE_UNUSED_ATTRIBUTE 1
 
 #define HAVE_CONSTRUCTOR_ATTRIBUTE 1
