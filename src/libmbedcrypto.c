@@ -100,7 +100,6 @@ void sha1_final(unsigned char *md, SHACTX c)
     SAFE_FREE(c);
 }
 
-#ifdef CONFIG_IDF_TARGET_ESP32C3
 void sha1(const unsigned char *digest, int len, unsigned char *hash)
 {
     const mbedtls_md_info_t *md_info =
@@ -109,7 +108,6 @@ void sha1(const unsigned char *digest, int len, unsigned char *hash)
         mbedtls_md(md_info, digest, len, hash);
     }
 }
-#endif
 
 static mbedtls_md_type_t nid_to_md_algo(int nid)
 {
