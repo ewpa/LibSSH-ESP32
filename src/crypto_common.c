@@ -23,12 +23,14 @@
 
 int secure_memcmp(const void *s1, const void *s2, size_t n)
 {
-    int rc = 0;
-    const unsigned char *p1 = s1;
-    const unsigned char *p2 = s2;
-    for (; n > 0; --n) {
-        rc |= *p1++ ^ *p2++;
-    }
-    return (rc != 0);
-}
+    size_t i;
+    uint8_t status = 0;
+    const uint8_t *p1 = s1;
+    const uint8_t *p2 = s2;
 
+    for (i = 0; i < n; i++) {
+        status |= (p1[i] ^ p2[i]);
+    }
+
+    return (status != 0);
+}

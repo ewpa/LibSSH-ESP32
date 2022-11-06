@@ -309,7 +309,11 @@ static struct ssh_packet_callbacks_struct ssh_dh_client_callbacks = {
  */
 int ssh_client_dh_init(ssh_session session){
   struct ssh_crypto_struct *crypto = session->next_crypto;
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
   const_bignum pubkey;
+#else
+  bignum pubkey = NULL;
+#endif /* OPENSSL_VERSION_NUMBER */
   int rc;
 
   rc = ssh_dh_init_common(crypto);
@@ -330,6 +334,9 @@ int ssh_client_dh_init(ssh_session session){
   if (rc != SSH_OK) {
     goto error;
   }
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+  bignum_safe_free(pubkey);
+#endif
 
   /* register the packet callbacks */
   ssh_packet_set_callbacks(session, &ssh_dh_client_callbacks);
@@ -338,6 +345,9 @@ int ssh_client_dh_init(ssh_session session){
   rc = ssh_packet_send(session);
   return rc;
 error:
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+  bignum_safe_free(pubkey);
+#endif
   ssh_dh_cleanup(crypto);
   return SSH_ERROR;
 }
@@ -370,7 +380,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dh_reply){
   if (rc != 0) {
       goto error;
   }
-  
+
   rc = ssh_dh_compute_shared_secret(session->next_crypto->dh_ctx,
                                     DH_CLIENT_KEYPAIR, DH_SERVER_KEYPAIR,
                                     &session->next_crypto->shared_secret);
@@ -436,7 +446,11 @@ int ssh_server_dh_process_init(ssh_session session, ssh_buffer packet)
     ssh_string sig_blob = NULL;
     ssh_string pubkey_blob = NULL;
     bignum client_pubkey;
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
     const_bignum server_pubkey;
+#else
+    bignum server_pubkey = NULL;
+#endif /* OPENSSL_VERSION_NUMBER */
     int packet_type;
     int rc;
 
@@ -516,6 +530,9 @@ int ssh_server_dh_process_init(ssh_session session, ssh_buffer packet)
                          sig_blob);
     SSH_STRING_FREE(sig_blob);
     SSH_STRING_FREE(pubkey_blob);
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+    bignum_safe_free(server_pubkey);
+#endif
     if(rc != SSH_OK) {
         ssh_set_error_oom(session);
         ssh_buffer_reinit(session->out_buffer);
@@ -541,6 +558,9 @@ int ssh_server_dh_process_init(ssh_session session, ssh_buffer packet)
 error:
     SSH_STRING_FREE(sig_blob);
     SSH_STRING_FREE(pubkey_blob);
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+    bignum_safe_free(server_pubkey);
+#endif
 
     session->session_state = SSH_SESSION_STATE_ERROR;
     ssh_dh_cleanup(session->next_crypto);
@@ -640,7 +660,7 @@ ssh_key ssh_dh_get_current_server_publickey(ssh_session session)
     return session->current_crypto->server_pubkey;
 }
 
-/* Caller need to free the blob */
+/* Caller needs to free the blob */
 int ssh_dh_get_current_server_publickey_blob(ssh_session session,
                                      ssh_string *pubkey_blob)
 {
@@ -654,7 +674,7 @@ ssh_key ssh_dh_get_next_server_publickey(ssh_session session)
     return session->next_crypto->server_pubkey;
 }
 
-/* Caller need to free the blob */
+/* Caller needs to free the blob */
 int ssh_dh_get_next_server_publickey_blob(ssh_session session,
                                           ssh_string *pubkey_blob)
 {
@@ -683,7 +703,7 @@ static char *ssh_get_b64_unpadded(const unsigned char *hash, size_t len)
     char *b64_unpadded = NULL;
     size_t k;
 
-    b64_padded = (char *)bin_to_base64(hash, (int)len);
+    b64_padded = (char *)bin_to_base64(hash, len);
     if (b64_padded == NULL) {
         return NULL;
     }
@@ -699,7 +719,7 @@ static char *ssh_get_b64_unpadded(const unsigned char *hash, size_t len)
  * @brief Get a hash as a human-readable hex- or base64-string.
  *
  * This gets an allocated fingerprint hash.  If it is a SHA sum, it will
- * return an unpadded base64 strings.  If it is a MD5 sum, it will return hex
+ * return an unpadded base64 string.  If it is a MD5 sum, it will return a hex
  * string. Either way, the output is prepended by the hash-type.
  *
  * @warning Do NOT use MD5 or SHA1! Those hash functions are being deprecated.
@@ -711,7 +731,8 @@ static char *ssh_get_b64_unpadded(const unsigned char *hash, size_t len)
  *
  * @param  len          Length of the buffer to convert.
  *
- * @return Returns the allocated fingerprint hash or NULL on error.
+ * @return Returns the allocated fingerprint hash or NULL on error. The caller
+ *         needs to free the memory using ssh_string_free_char().
  *
  * @see ssh_string_free_char()
  */

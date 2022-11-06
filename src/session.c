@@ -97,16 +97,14 @@ ssh_session ssh_new(void)
     ssh_set_blocking(session, 1);
     session->maxchannel = FIRST_CHANNEL;
 
-#ifndef _WIN32
     session->agent = ssh_agent_new(session);
     if (session->agent == NULL) {
         goto err;
     }
-#endif /* _WIN32 */
 
     /* OPTIONS */
     session->opts.StrictHostKeyChecking = 1;
-    session->opts.port = 0;
+    session->opts.port = 22;
     session->opts.fd = -1;
     session->opts.compressionlevel = 7;
     session->opts.nodelay = 0;
@@ -301,7 +299,9 @@ void ssh_free(ssh_session session)
   SAFE_FREE(session->serverbanner);
   SAFE_FREE(session->clientbanner);
   SAFE_FREE(session->banner);
+  SAFE_FREE(session->disconnect_message);
 
+  SAFE_FREE(session->opts.agent_socket);
   SAFE_FREE(session->opts.bindaddr);
   SAFE_FREE(session->opts.custombanner);
   SAFE_FREE(session->opts.moduli_file);
@@ -680,7 +680,7 @@ int ssh_handle_packets(ssh_session session, int timeout) {
  * @param[in] timeout   Set an upper limit on the time for which this function
  *                      will block, in milliseconds. Specifying
  *                      SSH_TIMEOUT_INFINITE (-1) means an infinite timeout.
- *                      Specifying SSH_TIMEOUT_USER means to use the timeout
+ *                      Specifying SSH_TIMEOUT_USER means using the timeout
  *                      specified in options. 0 means poll will return
  *                      immediately.
  *                      SSH_TIMEOUT_DEFAULT uses the session timeout if set or
@@ -694,13 +694,13 @@ int ssh_handle_packets(ssh_session session, int timeout) {
  *                      SSH_ERROR otherwise.
  */
 int ssh_handle_packets_termination(ssh_session session,
-                                   long timeout,
+                                   int timeout,
                                    ssh_termination_function fct,
                                    void *user)
 {
     struct ssh_timestamp ts;
-    long timeout_ms = SSH_TIMEOUT_INFINITE;
-    long tm;
+    int timeout_ms = SSH_TIMEOUT_INFINITE;
+    int tm;
     int ret = SSH_OK;
 
     /* If a timeout has been provided, use it */
@@ -857,7 +857,9 @@ void ssh_socket_exception_callback(int code, int errno_code, void *user){
     if (errno_code == 0 && code == SSH_SOCKET_EXCEPTION_EOF) {
         ssh_set_error(session, SSH_FATAL, "Socket error: disconnected");
     } else {
-        ssh_set_error(session, SSH_FATAL, "Socket error: %s", strerror(errno_code));
+        char err_msg[SSH_ERRNO_MSG_MAX] = {0};
+        ssh_set_error(session, SSH_FATAL, "Socket error: %s",
+                ssh_strerror(errno_code, err_msg, SSH_ERRNO_MSG_MAX));
     }
 
     session->ssh_connection_callback(session);
@@ -934,7 +936,7 @@ error:
  /**
  * @brief Set the session data counters.
  *
- * This functions sets the counter structures to be used to calculate data
+ * This function sets the counter structures to be used to calculate data
  * which comes in and goes out through the session at different levels.
  *
  * @code
@@ -1040,14 +1042,15 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
 /**
  * @brief Deallocate the hash obtained by ssh_get_pubkey_hash.
  *
- * This is required under Microsoft platform as this library might use a 
+ * This is required under Microsoft platform as this library might use a
  * different C library than your software, hence a different heap.
  *
  * @param[in] hash      The buffer to deallocate.
  *
  * @see ssh_get_pubkey_hash()
  */
-void ssh_clean_pubkey_hash(unsigned char **hash) {
+void ssh_clean_pubkey_hash(unsigned char **hash)
+{
     SAFE_FREE(*hash);
 }
 
@@ -1057,7 +1060,7 @@ void ssh_clean_pubkey_hash(unsigned char **hash) {
  * @param[in]  session  The session to get the key from.
  *
  * @param[out] key      A pointer to store the allocated key. You need to free
- *                      the key.
+ *                      the key using ssh_key_free().
  *
  * @return              SSH_OK on success, SSH_ERROR on errror.
  *
@@ -1101,15 +1104,15 @@ int ssh_get_publickey(ssh_session session, ssh_key *key)
  *
  * @param[in]  type     The type of the hash you want.
  *
- * @param[in]  hash     A pointer to store the allocated buffer. It can be
+ * @param[out]  hash    A pointer to store the allocated buffer. It can be
  *                      freed using ssh_clean_pubkey_hash().
  *
  * @param[in]  hlen     The length of the hash.
  *
- * @return 0 on success, -1 if an error occured.
+ * @return 0 on success, -1 if an error occurred.
  *
  * @warning It is very important that you verify at some moment that the hash
- *          matches a known server. If you don't do it, cryptography wont help
+ *          matches a known server. If you don't do it, cryptography won't help
  *          you at making things secure.
  *          OpenSSH uses SHA256 to print public key digests.
  *
@@ -1124,7 +1127,7 @@ int ssh_get_publickey_hash(const ssh_key key,
                            size_t *hlen)
 {
     ssh_string blob;
-    unsigned char *h;
+    unsigned char *h = NULL;
     int rc;
 
     rc = ssh_pki_export_pubkey_blob(key, &blob);

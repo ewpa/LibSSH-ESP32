@@ -7,7 +7,7 @@
 #define PACKAGE "libssh"
 
 /* Version number of package */
-#define VERSION "0.8.90"
+#define VERSION "0.10.4"
 
 #define SYSCONFDIR "etc"
 #define BINARYDIR "/home/ewan/Documents/Development/Embedded/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-build-local"
@@ -119,8 +119,8 @@
 /* Define to 1 if you have the `EVP_chacha20' function. */
 /* #undef HAVE_OPENSSL_EVP_CHACHA20 */
 
-/* Define to 1 if you have the `EVP_KDF_CTX_new_id' function. */
-/* #undef HAVE_OPENSSL_EVP_KDF_CTX_NEW_ID */
+/* Define to 1 if you have the `EVP_KDF_CTX_new_id' or `EVP_KDF_CTX_new` function. */
+/* #undef HAVE_OPENSSL_EVP_KDF_CTX */
 
 /* Define to 1 if you have the `FIPS_mode' function. */
 /* #undef HAVE_OPENSSL_FIPS_MODE */
@@ -168,7 +168,7 @@
 #define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `poll' function. */
-#define HAVE_POLL 1
+// #undef HAVE_POLL
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
@@ -230,6 +230,7 @@
 
 // #undef HAVE_FALLTHROUGH_ATTRIBUTE
 #define HAVE_UNUSED_ATTRIBUTE 1
+#define HAVE_WEAK_ATTRIBUTE 1
 
 #define HAVE_CONSTRUCTOR_ATTRIBUTE 1
 #define HAVE_DESTRUCTOR_ATTRIBUTE 1
@@ -340,7 +341,6 @@ enum ssh_config_opcode_e {
     SOC_MACS,
     SOC_COMPRESSION,
     SOC_TIMEOUT,
-    SOC_PROTOCOL,
     SOC_STRICTHOSTKEYCHECK,
     SOC_KNOWNHOSTS,
     SOC_PROXYCOMMAND,
@@ -358,8 +358,9 @@ enum ssh_config_opcode_e {
     SOC_KBDINTERACTIVEAUTHENTICATION,
     SOC_PASSWORDAUTHENTICATION,
     SOC_PUBKEYAUTHENTICATION,
-    SOC_PUBKEYACCEPTEDTYPES,
+    SOC_PUBKEYACCEPTEDKEYTYPES,
     SOC_REKEYLIMIT,
+    SOC_IDENTITYAGENT,
 
     SOC_MAX /* Keep this one last in the list */
 };

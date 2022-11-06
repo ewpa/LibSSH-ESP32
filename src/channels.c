@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdbool.h>
+#include <string.h>
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif /* HAVE_SYS_TIME_H */
@@ -79,6 +80,9 @@ static ssh_channel channel_from_msg(ssh_session session, ssh_buffer packet);
  * @param[in]  session  The ssh session to use.
  *
  * @return              A pointer to a newly allocated channel, NULL on error.
+ *                      The channel needs to be freed with ssh_channel_free().
+ *
+ * @see ssh_channel_free()
  */
 ssh_channel ssh_channel_new(ssh_session session)
 {
@@ -147,8 +151,9 @@ ssh_channel ssh_channel_new(ssh_session session)
  *
  * @return              The new channel identifier.
  */
-uint32_t ssh_channel_new_id(ssh_session session) {
-  return ++(session->maxchannel);
+uint32_t ssh_channel_new_id(ssh_session session)
+{
+    return ++(session->maxchannel);
 }
 
 /**
@@ -245,6 +250,7 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_open_fail){
               "SSH2_MSG_CHANNEL_OPEN_FAILURE received in incorrect channel "
               "state %d",
               channel->state);
+      SAFE_FREE(error);
       goto error;
   }
 
@@ -262,7 +268,8 @@ error:
   return SSH_PACKET_USED;
 }
 
-static int ssh_channel_open_termination(void *c){
+static int ssh_channel_open_termination(void *c)
+{
   ssh_channel channel = (ssh_channel) c;
   if (channel->state != SSH_CHANNEL_STATE_OPENING ||
       channel->session->session_state == SSH_SESSION_STATE_ERROR)
@@ -369,7 +376,7 @@ end:
     if (channel->state == SSH_CHANNEL_STATE_OPEN) {
         err = SSH_OK;
     } else if (err != SSH_AGAIN) {
-        /* Messages were handled correctly, but he channel state is invalid */
+        /* Messages were handled correctly, but the channel state is invalid */
         err = SSH_ERROR;
     }
 
@@ -396,7 +403,7 @@ ssh_channel ssh_channel_from_local(ssh_session session, uint32_t id) {
 
 /**
  * @internal
- * @brief grows the local window and send a packet to the other party
+ * @brief grows the local window and sends a packet to the other party
  * @param session SSH session
  * @param channel SSH channel
  * @param minimumsize The minimum acceptable size for the new window.
@@ -409,7 +416,7 @@ static int grow_window(ssh_session session,
   uint32_t new_window = minimumsize > WINDOWBEGIN ? minimumsize : WINDOWBEGIN;
   int rc;
 
-  if(new_window <= channel->local_window){
+  if (new_window <= channel->local_window) {
     SSH_LOG(SSH_LOG_PROTOCOL,
         "growing window (channel %d:%d) to %d bytes : not needed (%d bytes)",
         channel->local_channel, channel->remote_channel, new_window,
@@ -462,7 +469,8 @@ error:
  * @return              The related ssh_channel, or NULL if the channel is
  *                      unknown or the packet is invalid.
  */
-static ssh_channel channel_from_msg(ssh_session session, ssh_buffer packet) {
+static ssh_channel channel_from_msg(ssh_session session, ssh_buffer packet)
+{
   ssh_channel channel;
   uint32_t chan;
   int rc;
@@ -521,7 +529,7 @@ SSH_PACKET_CALLBACK(channel_rcv_data){
   ssh_channel channel;
   ssh_string str;
   ssh_buffer buf;
-  size_t len;
+  uint32_t len;
   int is_stderr;
   int rest;
   (void)user;
@@ -554,7 +562,7 @@ SSH_PACKET_CALLBACK(channel_rcv_data){
   len = ssh_string_len(str);
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Channel receiving %zu bytes data in %d (local win=%d remote win=%d)",
+      "Channel receiving %u bytes data in %d (local win=%d remote win=%d)",
       len,
       is_stderr,
       channel->local_window,
@@ -563,7 +571,7 @@ SSH_PACKET_CALLBACK(channel_rcv_data){
   /* What shall we do in this case? Let's accept it anyway */
   if (len > channel->local_window) {
     SSH_LOG(SSH_LOG_RARE,
-        "Data packet too big for our window(%zu vs %d)",
+        "Data packet too big for our window(%u vs %d)",
         len,
         channel->local_window);
   }
@@ -878,7 +886,7 @@ SSH_PACKET_CALLBACK(channel_rcv_request) {
 #else
     SSH_LOG(SSH_LOG_WARNING, "Unhandled channel request %s", request);
 #endif
-	
+
 	SAFE_FREE(request);
 
 	return SSH_PACKET_USED;
@@ -891,7 +899,7 @@ SSH_PACKET_CALLBACK(channel_rcv_request) {
  * FIXME is the window changed?
  */
 int channel_default_bufferize(ssh_channel channel,
-                              void *data, size_t len,
+                              void *data, uint32_t len,
                               bool is_stderr)
 {
   ssh_session session;
@@ -908,7 +916,7 @@ int channel_default_bufferize(ssh_channel channel,
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-          "placing %zu bytes into channel buffer (%s)",
+          "placing %u bytes into channel buffer (%s)",
           len,
           is_stderr ? "stderr" : "stdout");
   if (!is_stderr) {
@@ -963,8 +971,9 @@ int channel_default_bufferize(ssh_channel channel,
  * @see ssh_channel_request_shell()
  * @see ssh_channel_request_exec()
  */
-int ssh_channel_open_session(ssh_channel channel) {
-  if(channel == NULL) {
+int ssh_channel_open_session(ssh_channel channel)
+{
+  if (channel == NULL) {
       return SSH_ERROR;
   }
 
@@ -990,8 +999,9 @@ int ssh_channel_open_session(ssh_channel channel) {
  *
  * @see ssh_channel_open_forward()
  */
-int ssh_channel_open_auth_agent(ssh_channel channel){
-  if(channel == NULL) {
+int ssh_channel_open_auth_agent(ssh_channel channel)
+{
+  if (channel == NULL) {
       return SSH_ERROR;
   }
 
@@ -1026,16 +1036,17 @@ int ssh_channel_open_auth_agent(ssh_channel channel){
  *
  * @warning This function does not bind the local port and does not automatically
  *          forward the content of a socket to the channel. You still have to
- *          use channel_read and channel_write for this.
+ *          use ssh_channel_read and ssh_channel_write for this.
  */
 int ssh_channel_open_forward(ssh_channel channel, const char *remotehost,
-    int remoteport, const char *sourcehost, int localport) {
+    int remoteport, const char *sourcehost, int localport)
+{
   ssh_session session;
   ssh_buffer payload = NULL;
   ssh_string str = NULL;
   int rc = SSH_ERROR;
 
-  if(channel == NULL) {
+  if (channel == NULL) {
       return rc;
   }
 
@@ -1097,7 +1108,7 @@ error:
  *
  * @warning This function does not bind the local port and does not
  *          automatically forward the content of a socket to the channel.
- *          You still have to use channel_read and channel_write for this.
+ *          You still have to use ssh_channel_read and ssh_channel_write for this.
  * @warning Requires support of OpenSSH for UNIX domain socket forwarding.
   */
 int ssh_channel_open_forward_unix(ssh_channel channel,
@@ -1202,7 +1213,7 @@ void ssh_channel_free(ssh_channel channel)
     channel->flags |= SSH_CHANNEL_FLAG_FREED_LOCAL;
 
     /* The idea behind the flags is the following : it is well possible
-     * that a client closes a channel that stills exists on the server side.
+     * that a client closes a channel that still exists on the server side.
      * We definitively close the channel when we receive a close message *and*
      * the user closed it.
      */
@@ -1382,7 +1393,8 @@ error:
 }
 
 /* this termination function waits for a window growing condition */
-static int ssh_channel_waitwindow_termination(void *c){
+static int ssh_channel_waitwindow_termination(void *c)
+{
   ssh_channel channel = (ssh_channel) c;
   if (channel->remote_window > 0 ||
       channel->session->session_state == SSH_SESSION_STATE_ERROR ||
@@ -1395,7 +1407,8 @@ static int ssh_channel_waitwindow_termination(void *c){
 /* This termination function waits until the session is not in blocked status
  * anymore, e.g. because of a key re-exchange.
  */
-static int ssh_waitsession_unblocked(void *s){
+static int ssh_waitsession_unblocked(void *s)
+{
     ssh_session session = (ssh_session)s;
     switch (session->session_state){
         case SSH_SESSION_STATE_DH:
@@ -1415,8 +1428,9 @@ static int ssh_waitsession_unblocked(void *s){
  *          SSH_ERROR On error.
  *          SSH_AGAIN Timeout elapsed (or in nonblocking mode).
  */
-int ssh_channel_flush(ssh_channel channel){
-  return ssh_blocking_flush(channel->session, SSH_TIMEOUT_DEFAULT);
+int ssh_channel_flush(ssh_channel channel)
+{
+    return ssh_blocking_flush(channel->session, SSH_TIMEOUT_DEFAULT);
 }
 
 static int channel_write_common(ssh_channel channel,
@@ -1499,7 +1513,7 @@ static int channel_write_common(ssh_channel channel,
       effectivelen = len;
     }
 
-    effectivelen = MIN(effectivelen, maxpacketlen);;
+    effectivelen = MIN(effectivelen, maxpacketlen);
 
     rc = ssh_buffer_pack(session->out_buffer,
                          "bd",
@@ -1537,7 +1551,7 @@ static int channel_write_common(ssh_channel channel,
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-        "channel_write wrote %ld bytes", (long int) effectivelen);
+        "ssh_channel_write wrote %ld bytes", (long int) effectivelen);
 
     channel->remote_window -= effectivelen;
     len -= effectivelen;
@@ -1565,7 +1579,7 @@ error:
 /**
  * @brief Get the remote window size.
  *
- * This is the maximum amounts of bytes the remote side expects us to send
+ * This is the maximum amount of bytes the remote side expects us to send
  * before growing the window again.
  *
  * @param[in] channel The channel to query.
@@ -1579,7 +1593,8 @@ error:
  * @warning A zero return value means ssh_channel_write (default settings)
  *          will block until the window grows back.
  */
-uint32_t ssh_channel_window_size(ssh_channel channel) {
+uint32_t ssh_channel_window_size(ssh_channel channel)
+{
     return channel->remote_window;
 }
 
@@ -1596,8 +1611,9 @@ uint32_t ssh_channel_window_size(ssh_channel channel) {
  *
  * @see ssh_channel_read()
  */
-int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len) {
-  return channel_write_common(channel, data, len, 0);
+int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len)
+{
+    return channel_write_common(channel, data, len, 0);
 }
 
 /**
@@ -1609,8 +1625,9 @@ int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len) {
  *
  * @see ssh_channel_is_closed()
  */
-int ssh_channel_is_open(ssh_channel channel) {
-    if(channel == NULL) {
+int ssh_channel_is_open(ssh_channel channel)
+{
+    if (channel == NULL) {
         return 0;
     }
     return (channel->state == SSH_CHANNEL_STATE_OPEN && channel->session->alive != 0);
@@ -1625,8 +1642,9 @@ int ssh_channel_is_open(ssh_channel channel) {
  *
  * @see ssh_channel_is_open()
  */
-int ssh_channel_is_closed(ssh_channel channel) {
-    if(channel == NULL) {
+int ssh_channel_is_closed(ssh_channel channel)
+{
+    if (channel == NULL) {
         return SSH_ERROR;
     }
     return (channel->state != SSH_CHANNEL_STATE_OPEN || channel->session->alive == 0);
@@ -1639,15 +1657,16 @@ int ssh_channel_is_closed(ssh_channel channel) {
  *
  * @return              0 if there is no EOF, nonzero otherwise.
  */
-int ssh_channel_is_eof(ssh_channel channel) {
-  if(channel == NULL) {
-      return SSH_ERROR;
-  }
-  if (ssh_channel_has_unread_data(channel)) {
-      return 0;
-  }
+int ssh_channel_is_eof(ssh_channel channel)
+{
+    if (channel == NULL) {
+        return SSH_ERROR;
+    }
+    if (ssh_channel_has_unread_data(channel)) {
+        return 0;
+    }
 
-  return (channel->remote_eof != 0);
+    return (channel->remote_eof != 0);
 }
 
 /**
@@ -1661,11 +1680,12 @@ int ssh_channel_is_eof(ssh_channel channel) {
  *             in non-blocking mode.
  * @see ssh_set_blocking()
  */
-void ssh_channel_set_blocking(ssh_channel channel, int blocking) {
-  if(channel == NULL) {
-      return;
-  }
-  ssh_set_blocking(channel->session,blocking);
+void ssh_channel_set_blocking(ssh_channel channel, int blocking)
+{
+    if (channel == NULL) {
+        return;
+    }
+    ssh_set_blocking(channel->session, blocking);
 }
 
 /**
@@ -1729,7 +1749,8 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_failure){
   return SSH_PACKET_USED;
 }
 
-static int ssh_channel_request_termination(void *c){
+static int ssh_channel_request_termination(void *c)
+{
   ssh_channel channel = (ssh_channel)c;
   if(channel->request_state != SSH_CHANNEL_REQ_STATE_PENDING ||
       channel->session->session_state == SSH_SESSION_STATE_ERROR)
@@ -1739,7 +1760,8 @@ static int ssh_channel_request_termination(void *c){
 }
 
 static int channel_request(ssh_channel channel, const char *request,
-    ssh_buffer buffer, int reply) {
+    ssh_buffer buffer, int reply)
+{
   ssh_session session = channel->session;
   int rc = SSH_ERROR;
   int ret;
@@ -1825,7 +1847,7 @@ error:
 /**
  * @brief Request a pty with a specific type and size.
  *
- * @param[in]  channel  The channel to sent the request.
+ * @param[in]  channel  The channel to send the request.
  *
  * @param[in]  terminal The terminal type ("vt100, xterm,...").
  *
@@ -1839,7 +1861,8 @@ error:
  *                      to be done again.
  */
 int ssh_channel_request_pty_size(ssh_channel channel, const char *terminal,
-    int col, int row) {
+    int col, int row)
+{
   ssh_session session;
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
@@ -1901,7 +1924,8 @@ error:
  *
  * @see ssh_channel_request_pty_size()
  */
-int ssh_channel_request_pty(ssh_channel channel) {
+int ssh_channel_request_pty(ssh_channel channel)
+{
   return ssh_channel_request_pty_size(channel, "xterm", 80, 24);
 }
 
@@ -1917,10 +1941,11 @@ int ssh_channel_request_pty(ssh_channel channel) {
  * @return              SSH_OK on success, SSH_ERROR if an error occurred.
  *
  * @warning Do not call it from a signal handler if you are not sure any other
- *          libssh function using the same channel/session is running at same
- *          time (not 100% threadsafe).
+ *          libssh function using the same channel/session is running at the
+ *          same time (not 100% threadsafe).
  */
-int ssh_channel_change_pty_size(ssh_channel channel, int cols, int rows) {
+int ssh_channel_change_pty_size(ssh_channel channel, int cols, int rows)
+{
   ssh_session session = channel->session;
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
@@ -1959,8 +1984,9 @@ error:
  *                      SSH_AGAIN if in nonblocking mode and call has
  *                      to be done again.
  */
-int ssh_channel_request_shell(ssh_channel channel) {
-    if(channel == NULL) {
+int ssh_channel_request_shell(ssh_channel channel)
+{
+    if (channel == NULL) {
         return SSH_ERROR;
     }
 
@@ -1981,7 +2007,8 @@ int ssh_channel_request_shell(ssh_channel channel) {
  *
  * @warning You normally don't have to call it for sftp, see sftp_new().
  */
-int ssh_channel_request_subsystem(ssh_channel channel, const char *subsys) {
+int ssh_channel_request_subsystem(ssh_channel channel, const char *subsys)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 
@@ -2030,14 +2057,16 @@ error:
  *
  * @note You should use sftp_new() which does this for you.
  */
-int ssh_channel_request_sftp( ssh_channel channel){
+int ssh_channel_request_sftp( ssh_channel channel)
+{
     if(channel == NULL) {
         return SSH_ERROR;
     }
     return ssh_channel_request_subsystem(channel, "sftp");
 }
 
-static char *generate_cookie(void) {
+static char *generate_cookie(void)
+{
   static const char *hex = "0123456789abcdef";
   char s[36];
   unsigned char rnd[16];
@@ -2061,7 +2090,7 @@ static char *generate_cookie(void) {
  * @brief Sends the "x11-req" channel request over an existing session channel.
  *
  * This will enable redirecting the display of the remote X11 applications to
- * local X server over an secure tunnel.
+ * local X server over a secure tunnel.
  *
  * @param[in]  channel  An existing session channel where the remote X11
  *                      applications are going to be executed.
@@ -2083,7 +2112,8 @@ static char *generate_cookie(void) {
  *                      to be done again.
  */
 int ssh_channel_request_x11(ssh_channel channel, int single_connection, const char *protocol,
-    const char *cookie, int screen_number) {
+    const char *cookie, int screen_number)
+{
   ssh_buffer buffer = NULL;
   char *c = NULL;
   int rc = SSH_ERROR;
@@ -2134,7 +2164,8 @@ error:
 }
 
 static ssh_channel ssh_channel_accept(ssh_session session, int channeltype,
-    int timeout_ms, int *destination_port) {
+    int timeout_ms, int *destination_port, char **originator, int *originator_port)
+{
 #if !defined( _WIN32) && !defined(ESP32)
   static const struct timespec ts = {
     .tv_sec = 0,
@@ -2168,6 +2199,12 @@ static ssh_channel ssh_channel_accept(ssh_session session, int channeltype,
           if(destination_port) {
             *destination_port=msg->channel_request_open.destination_port;
           }
+          if(originator) {
+            *originator=strdup(msg->channel_request_open.originator);
+          }
+          if(originator_port) {
+            *originator_port=msg->channel_request_open.originator_port;
+          }
 
           ssh_message_free(msg);
           return channel;
@@ -2200,8 +2237,9 @@ static ssh_channel ssh_channel_accept(ssh_session session, int channeltype,
  * @return              A newly created channel, or NULL if no X11 request from
  *                      the server.
  */
-ssh_channel ssh_channel_accept_x11(ssh_channel channel, int timeout_ms) {
-  return ssh_channel_accept(channel->session, SSH_CHANNEL_X11, timeout_ms, NULL);
+ssh_channel ssh_channel_accept_x11(ssh_channel channel, int timeout_ms)
+{
+    return ssh_channel_accept(channel->session, SSH_CHANNEL_X11, timeout_ms, NULL, NULL, NULL);
 }
 
 /**
@@ -2270,7 +2308,8 @@ SSH_PACKET_CALLBACK(ssh_request_denied){
 
 }
 
-static int ssh_global_request_termination(void *s){
+static int ssh_global_request_termination(void *s)
+{
   ssh_session session = (ssh_session) s;
   if (session->global_req_state != SSH_CHANNEL_REQ_STATE_PENDING ||
       session->session_state == SSH_SESSION_STATE_ERROR)
@@ -2449,17 +2488,19 @@ error:
 }
 
 /* DEPRECATED */
-int ssh_forward_listen(ssh_session session, const char *address, int port, int *bound_port) {
+int ssh_forward_listen(ssh_session session, const char *address, int port, int *bound_port)
+{
   return ssh_channel_listen_forward(session, address, port, bound_port);
 }
 
 /* DEPRECATED */
-ssh_channel ssh_forward_accept(ssh_session session, int timeout_ms) {
-  return ssh_channel_accept(session, SSH_CHANNEL_FORWARDED_TCPIP, timeout_ms, NULL);
+ssh_channel ssh_forward_accept(ssh_session session, int timeout_ms)
+{
+    return ssh_channel_accept(session, SSH_CHANNEL_FORWARDED_TCPIP, timeout_ms, NULL, NULL, NULL);
 }
 
 /**
- * @brief Accept an incoming TCP/IP forwarding channel and get information
+ * @brief Accept an incoming TCP/IP forwarding channel and get some information
  * about incomming connection
  * @param[in]  session    The ssh session to use.
  *
@@ -2471,7 +2512,30 @@ ssh_channel ssh_forward_accept(ssh_session session, int timeout_ms) {
  *         the server
  */
 ssh_channel ssh_channel_accept_forward(ssh_session session, int timeout_ms, int* destination_port) {
-  return ssh_channel_accept(session, SSH_CHANNEL_FORWARDED_TCPIP, timeout_ms, destination_port);
+  return ssh_channel_accept(session, SSH_CHANNEL_FORWARDED_TCPIP, timeout_ms, destination_port, NULL, NULL);
+}
+
+/**
+ * @brief Accept an incoming TCP/IP forwarding channel and get information
+ * about incomming connection
+ * @param[in]  session    The ssh session to use.
+ *
+ * @param[in]  timeout_ms A timeout in milliseconds.
+ *
+ * @param[out]  destination_port A pointer to destination port or NULL.
+ *
+ * @param[out]  originator A pointer to a pointer to a string of originator host or NULL.
+ *              That the caller is responsible for to ssh_string_free_char().
+ *
+ * @param[out]  originator_port A pointer to originator port or NULL.
+ *
+ * @return Newly created channel, or NULL if no incoming channel request from
+ *         the server
+ *
+ * @see ssh_string_free_char()
+ */
+ssh_channel ssh_channel_open_forward_port(ssh_session session, int timeout_ms, int *destination_port, char **originator, int *originator_port) {
+  return ssh_channel_accept(session, SSH_CHANNEL_FORWARDED_TCPIP, timeout_ms, destination_port, originator, originator_port);
 }
 
 /**
@@ -2521,7 +2585,8 @@ error:
 }
 
 /* DEPRECATED */
-int ssh_forward_cancel(ssh_session session, const char *address, int port) {
+int ssh_forward_cancel(ssh_session session, const char *address, int port)
+{
     return ssh_channel_cancel_forward(session, address, port);
 }
 
@@ -2540,7 +2605,8 @@ int ssh_forward_cancel(ssh_session session, const char *address, int port) {
  *                      to be done again.
  * @warning Some environment variables may be refused by security reasons.
  */
-int ssh_channel_request_env(ssh_channel channel, const char *name, const char *value) {
+int ssh_channel_request_env(ssh_channel channel, const char *name, const char *value)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 
@@ -2610,7 +2676,8 @@ error:
  *
  * @see ssh_channel_request_shell()
  */
-int ssh_channel_request_exec(ssh_channel channel, const char *cmd) {
+int ssh_channel_request_exec(ssh_channel channel, const char *cmd)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 
@@ -2654,10 +2721,6 @@ error:
  * Sends a signal 'sig' to the remote process.
  * Note, that remote system may not support signals concept.
  * In such a case this request will be silently ignored.
- * Only SSH-v2 is supported (I'm not sure about SSH-v1).
- *
- * OpenSSH doesn't support signals yet, see:
- * https://bugzilla.mindrot.org/show_bug.cgi?id=1424
  *
  * @param[in]  channel  The channel to send signal.
  *
@@ -2677,17 +2740,17 @@ error:
  *                      SIGUSR1  -> USR1 \n
  *                      SIGUSR2  -> USR2 \n
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred
- *                      (including attempts to send signal via SSH-v1 session).
+ * @return              SSH_OK on success, SSH_ERROR if an error occurred.
  */
-int ssh_channel_request_send_signal(ssh_channel channel, const char *sig) {
+int ssh_channel_request_send_signal(ssh_channel channel, const char *sig)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 
-  if(channel == NULL) {
+  if (channel == NULL) {
       return SSH_ERROR;
   }
-  if(sig == NULL) {
+  if (sig == NULL) {
       ssh_set_error_invalid(channel->session);
       return rc;
   }
@@ -2717,16 +2780,15 @@ error:
  * Sends a break signal to the remote process.
  * Note, that remote system may not support breaks.
  * In such a case this request will be silently ignored.
- * Only SSH-v2 is supported.
  *
  * @param[in]  channel  The channel to send the break to.
  *
  * @param[in]  length   The break-length in milliseconds to send.
  *
  * @return              SSH_OK on success, SSH_ERROR if an error occurred
- *                      (including attempts to send signal via SSH-v1 session).
  */
-int ssh_channel_request_send_break(ssh_channel channel, uint32_t length) {
+int ssh_channel_request_send_break(ssh_channel channel, uint32_t length)
+{
     ssh_buffer buffer = NULL;
     int rc = SSH_ERROR;
 
@@ -2759,7 +2821,7 @@ error:
  *
  * @param[in]  channel  The channel to read from.
  *
- * @param[in]  buffer   The buffer which will get the data.
+ * @param[out]  buffer   The buffer which will get the data.
  *
  * @param[in]  count    The count of bytes to be read. If it is bigger than 0,
  *                      the exact size will be read, else (bytes=0) it will
@@ -2774,7 +2836,8 @@ error:
  * @see ssh_channel_read
  */
 int channel_read_buffer(ssh_channel channel, ssh_buffer buffer, uint32_t count,
-    int is_stderr) {
+    int is_stderr)
+{
   ssh_session session;
   char *buffer_tmp = NULL;
   int r;
@@ -2849,7 +2912,8 @@ struct ssh_channel_read_termination_struct {
   ssh_buffer buffer;
 };
 
-static int ssh_channel_read_termination(void *s){
+static int ssh_channel_read_termination(void *s)
+{
   struct ssh_channel_read_termination_struct *ctx = s;
   if (ssh_buffer_get_len(ctx->buffer) >= ctx->count ||
       ctx->channel->remote_eof ||
@@ -2859,27 +2923,25 @@ static int ssh_channel_read_termination(void *s){
     return 0;
 }
 
-/* TODO FIXME Fix the blocking behaviours */
+/* TODO: FIXME Fix the blocking behaviours */
 
 /**
  * @brief Reads data from a channel.
  *
  * @param[in]  channel  The channel to read from.
  *
- * @param[in]  dest     The destination buffer which will get the data.
+ * @param[out] dest     The destination buffer which will get the data.
  *
  * @param[in]  count    The count of bytes to be read.
  *
  * @param[in]  is_stderr A boolean value to mark reading from the stderr flow.
  *
  * @return              The number of bytes read, 0 on end of file or SSH_ERROR
- *                      on error. In nonblocking mode it Can return 0 if no data
+ *                      on error. In nonblocking mode it can return 0 if no data
  *                      is available or SSH_AGAIN.
  *
  * @warning This function may return less than count bytes of data, and won't
  *          block until count bytes have been read.
- * @warning The read function using a buffer has been renamed to
- *          channel_read_buffer().
  */
 int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_stderr)
 {
@@ -2895,7 +2957,7 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_std
  *
  * @param[in]  channel     The channel to read from.
  *
- * @param[in]  dest        The destination buffer which will get the data.
+ * @param[out] dest        The destination buffer which will get the data.
  *
  * @param[in]  count       The count of bytes to be read.
  *
@@ -2910,8 +2972,6 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_std
  *
  * @warning This function may return less than count bytes of data, and won't
  *          block until count bytes have been read.
- * @warning The read function using a buffer has been renamed to
- *          channel_read_buffer().
  */
 int ssh_channel_read_timeout(ssh_channel channel,
                              void *dest,
@@ -3025,7 +3085,7 @@ int ssh_channel_read_timeout(ssh_channel channel,
  *
  * @param[in]  channel  The channel to read from.
  *
- * @param[in]  dest     A pointer to a destination buffer.
+ * @param[out] dest     A pointer to a destination buffer.
  *
  * @param[in]  count    The count of bytes of data to be read.
  *
@@ -3044,7 +3104,7 @@ int ssh_channel_read_nonblocking(ssh_channel channel,
                                  int is_stderr)
 {
     ssh_session session;
-    ssize_t to_read;
+    uint32_t to_read;
     int rc;
     int blocking;
 
@@ -3058,22 +3118,24 @@ int ssh_channel_read_nonblocking(ssh_channel channel,
 
     session = channel->session;
 
-    to_read = ssh_channel_poll(channel, is_stderr);
+    rc = ssh_channel_poll(channel, is_stderr);
 
-    if (to_read <= 0) {
+    if (rc <= 0) {
         if (session->session_state == SSH_SESSION_STATE_ERROR){
             return SSH_ERROR;
         }
 
-        return to_read; /* may be an error code */
+        return rc; /* may be an error code */
     }
 
-    if ((size_t)to_read > count) {
-        to_read = (ssize_t)count;
+    to_read = (unsigned int)rc;
+
+    if (to_read > count) {
+        to_read = count;
     }
     blocking = ssh_is_blocking(session);
     ssh_set_blocking(session, 0);
-    rc = ssh_channel_read(channel, dest, (uint32_t)to_read, is_stderr);
+    rc = ssh_channel_read(channel, dest, to_read, is_stderr);
     ssh_set_blocking(session,blocking);
 
     return rc;
@@ -3088,15 +3150,18 @@ int ssh_channel_read_nonblocking(ssh_channel channel,
  *
  * @return              The number of bytes available for reading, 0 if nothing
  *                      is available or SSH_ERROR on error.
+ *                      When a channel is freed the function returns
+ *                      SSH_ERROR immediately.
  *
  * @warning When the channel is in EOF state, the function returns SSH_EOF.
  *
  * @see ssh_channel_is_eof()
  */
-int ssh_channel_poll(ssh_channel channel, int is_stderr){
+int ssh_channel_poll(ssh_channel channel, int is_stderr)
+{
   ssh_buffer stdbuf;
 
-  if(channel == NULL) {
+  if ((channel == NULL) || (channel->flags & SSH_CHANNEL_FLAG_FREED_LOCAL)) {
       return SSH_ERROR;
   }
 
@@ -3142,6 +3207,7 @@ int ssh_channel_poll(ssh_channel channel, int is_stderr){
  *                      SSH_ERROR on error.
  *
  * @warning When the channel is in EOF state, the function returns SSH_EOF.
+ *          When a channel is freed the function returns SSH_ERROR immediately.
  *
  * @see ssh_channel_is_eof()
  */
@@ -3153,7 +3219,7 @@ int ssh_channel_poll_timeout(ssh_channel channel, int timeout, int is_stderr)
     size_t len;
     int rc;
 
-    if (channel == NULL) {
+    if ((channel == NULL) || (channel->flags & SSH_CHANNEL_FLAG_FREED_LOCAL)) {
         return SSH_ERROR;
     }
 
@@ -3205,15 +3271,17 @@ out:
  *
  * @return              The session pointer.
  */
-ssh_session ssh_channel_get_session(ssh_channel channel) {
-  if(channel == NULL) {
+ssh_session ssh_channel_get_session(ssh_channel channel)
+{
+  if (channel == NULL) {
       return NULL;
   }
 
   return channel->session;
 }
 
-static int ssh_channel_exit_status_termination(void *c){
+static int ssh_channel_exit_status_termination(void *c)
+{
   ssh_channel channel = c;
   if(channel->exit_status != -1 ||
       /* When a channel is closed, no exit status message can
@@ -3235,15 +3303,18 @@ static int ssh_channel_exit_status_termination(void *c){
  *                      (yet), or SSH_ERROR on error.
  * @warning             This function may block until a timeout (or never)
  *                      if the other side is not willing to close the channel.
+ *                      When a channel is freed the function returns
+ *                      SSH_ERROR immediately.
  *
  * If you're looking for an async handling of this register a callback for the
  * exit status.
  *
  * @see ssh_channel_exit_status_callback
  */
-int ssh_channel_get_exit_status(ssh_channel channel) {
+int ssh_channel_get_exit_status(ssh_channel channel)
+{
   int rc;
-  if(channel == NULL) {
+  if ((channel == NULL) || (channel->flags & SSH_CHANNEL_FLAG_FREED_LOCAL)) {
       return SSH_ERROR;
   }
   rc = ssh_handle_packets_termination(channel->session,
@@ -3265,8 +3336,11 @@ int ssh_channel_get_exit_status(ssh_channel channel) {
  * This is made in two parts: protocol select and network select. The protocol
  * select does not use the network functions at all
  */
-static int channel_protocol_select(ssh_channel *rchans, ssh_channel *wchans,
-    ssh_channel *echans, ssh_channel *rout, ssh_channel *wout, ssh_channel *eout) {
+static int
+channel_protocol_select(ssh_channel *rchans, ssh_channel *wchans,
+                        ssh_channel *echans, ssh_channel *rout,
+                        ssh_channel *wout, ssh_channel *eout)
+{
   ssh_channel chan;
   int i;
   int j = 0;
@@ -3346,7 +3420,8 @@ static size_t count_ptrs(ssh_channel *ptrs)
  *                     function, or SSH_ERROR on error.
  */
 int ssh_channel_select(ssh_channel *readchans, ssh_channel *writechans,
-    ssh_channel *exceptchans, struct timeval * timeout) {
+                       ssh_channel *exceptchans, struct timeval * timeout)
+{
   ssh_channel *rchans, *wchans, *echans;
   ssh_channel dummy = NULL;
   ssh_event event = NULL;
@@ -3480,7 +3555,8 @@ int ssh_channel_select(ssh_channel *readchans, ssh_channel *writechans,
  * @param[in] counter Counter for bytes handled by the channel.
  */
 void ssh_channel_set_counter(ssh_channel channel,
-                             ssh_counter counter) {
+                             ssh_counter counter)
+{
     if (channel != NULL) {
         channel->counter = counter;
     }
@@ -3499,8 +3575,9 @@ void ssh_channel_set_counter(ssh_channel channel,
  *
  * @see ssh_channel_read()
  */
-int ssh_channel_write_stderr(ssh_channel channel, const void *data, uint32_t len) {
-  return channel_write_common(channel, data, len, 1);
+int ssh_channel_write_stderr(ssh_channel channel, const void *data, uint32_t len)
+{
+    return channel_write_common(channel, data, len, 1);
 }
 
 #if WITH_SERVER
@@ -3527,10 +3604,11 @@ int ssh_channel_write_stderr(ssh_channel channel, const void *data, uint32_t len
  *
  * @warning This function does not bind the local port and does not automatically
  *          forward the content of a socket to the channel. You still have to
- *          use channel_read and channel_write for this.
+ *          use ssh_channel_read and ssh_channel_write for this.
  */
 int ssh_channel_open_reverse_forward(ssh_channel channel, const char *remotehost,
-    int remoteport, const char *sourcehost, int localport) {
+                                     int remoteport, const char *sourcehost, int localport)
+{
   ssh_session session;
   ssh_buffer payload = NULL;
   int rc = SSH_ERROR;
@@ -3590,10 +3668,11 @@ error:
  *                      to be done again.
  * @warning This function does not bind the local port and does not automatically
  *          forward the content of a socket to the channel. You still have to
- *          use channel_read and channel_write for this.
+ *          use shh_channel_read and ssh_channel_write for this.
  */
-int ssh_channel_open_x11(ssh_channel channel, 
-        const char *orig_addr, int orig_port) {
+int ssh_channel_open_x11(ssh_channel channel,
+                         const char *orig_addr, int orig_port)
+{
   ssh_session session;
   ssh_buffer payload = NULL;
   int rc = SSH_ERROR;
@@ -3642,16 +3721,15 @@ error:
  *
  * Sends the exit status to the remote process (as described in RFC 4254,
  * section 6.10).
- * Only SSH-v2 is supported (I'm not sure about SSH-v1).
  *
  * @param[in]  channel  The channel to send exit status.
  *
  * @param[in]  exit_status  The exit status to send
  *
  * @return     SSH_OK on success, SSH_ERROR if an error occurred.
- *             (including attempts to send exit status via SSH-v1 session).
  */
-int ssh_channel_request_send_exit_status(ssh_channel channel, int exit_status) {
+int ssh_channel_request_send_exit_status(ssh_channel channel, int exit_status)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 
@@ -3683,7 +3761,6 @@ error:
  * This sends the exit status of the remote process.
  * Note, that remote system may not support signals concept.
  * In such a case this request will be silently ignored.
- * Only SSH-v2 is supported (I'm not sure about SSH-v1).
  *
  * @param[in]  channel  The channel to send signal.
  *
@@ -3694,10 +3771,10 @@ error:
  * @param[in]  lang     The language used in the message (format: RFC 3066)
  *
  * @return              SSH_OK on success, SSH_ERROR if an error occurred
- *                      (including attempts to send signal via SSH-v1 session).
  */
 int ssh_channel_request_send_exit_signal(ssh_channel channel, const char *sig,
-                            int core, const char *errmsg, const char *lang) {
+                                         int core, const char *errmsg, const char *lang)
+{
   ssh_buffer buffer = NULL;
   int rc = SSH_ERROR;
 

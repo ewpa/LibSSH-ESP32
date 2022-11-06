@@ -14,8 +14,8 @@ to your sketch:
     #include "libssh_esp32.h"
     libssh_begin();
 
-This library is currently built and tested against version 1.0.6 and 2.0.0 to
-2.0.2 of the ESP32 Arduino core for ESP32 and ESP32-C3 boards.  Versions and
+This library is currently built and tested against version 1.0.6 and 2.0.4 of
+the ESP32 Arduino core for ESP32, ESP32-C3 and ESP32-S3 boards.  Versions and
 boards outside of this list may function but have not been tested.  Please
 refer to the GIT log for the latest changes.  Further information on this port
 can be found at the following address.
@@ -23,8 +23,12 @@ can be found at the following address.
   https://www.ewan.cc/?q=node/157
 
 This port created by Ewan Parker on 18th April 2020.
-Last ported 6th September 2021, built with libssh commit 76b7e0e9.
+Last ported 6th November 2022, built with libssh commit e8322817, branch
+stable-0.10, tag libssh-0.10.4.
 
+
+[![pipeline status](https://gitlab.com/libssh/libssh-mirror/badges/master/pipeline.svg)](https://gitlab.com/libssh/libssh-mirror/commits/master)
+[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libssh.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libssh)
 
 ```
   _   _   _                          _
@@ -62,7 +66,7 @@ https://www.libssh.org
 
 # Contributing
 
-Please read the file 'SubmittingPatches' next to this README file. It explains
+Please read the file 'CONTRIBUTING.md' next to this README file. It explains
 our copyright policy and how you should send patches for upstream inclusion.
 
 Have fun and happy libssh hacking!

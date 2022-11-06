@@ -57,6 +57,7 @@ enum ssh_bind_options_e {
   SSH_BIND_OPTIONS_HOSTKEY_ALGORITHMS,
   SSH_BIND_OPTIONS_PROCESS_CONFIG,
   SSH_BIND_OPTIONS_MODULI,
+  SSH_BIND_OPTIONS_RSA_MIN_SIZE,
 };
 
 typedef struct ssh_bind_struct* ssh_bind;
@@ -244,6 +245,18 @@ LIBSSH_API void ssh_bind_free(ssh_bind ssh_bind_o);
  */
 LIBSSH_API void ssh_set_auth_methods(ssh_session session, int auth_methods);
 
+/**
+ * @brief Send the server's issue-banner to client.
+ *
+ *
+ * @param[in]  session      The server session.
+ *
+ * @param[in]  banner       The server's banner.
+ *
+ * @return                  SSH_OK on success, SSH_ERROR on error.
+ */
+LIBSSH_API int ssh_send_issue_banner(ssh_session session, const ssh_string banner);
+
 /**********************************************************
  * SERVER MESSAGING
  **********************************************************/
@@ -283,8 +296,10 @@ LIBSSH_API const char *ssh_message_auth_user(ssh_message msg);
  *
  * @see ssh_message_get()
  * @see ssh_message_type()
+ * @warning This function should not be used anymore as there is a
+ * callback based server implementation now auth_password_function.
  */
-LIBSSH_API const char *ssh_message_auth_password(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API const char *ssh_message_auth_password(ssh_message msg);
 
 /**
  * @brief Get the publickey of the authenticated user.
@@ -299,11 +314,16 @@ LIBSSH_API const char *ssh_message_auth_password(ssh_message msg);
  * @see ssh_key_cmp()
  * @see ssh_message_get()
  * @see ssh_message_type()
+ * @warning This function should not be used anymore as there is a
+ * callback based server implementation auth_pubkey_function.
  */
-LIBSSH_API ssh_key ssh_message_auth_pubkey(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API ssh_key ssh_message_auth_pubkey(ssh_message msg);
 
 LIBSSH_API int ssh_message_auth_kbdint_is_response(ssh_message msg);
-LIBSSH_API enum ssh_publickey_state_e ssh_message_auth_publickey_state(ssh_message msg);
+
+/* Replaced by callback based server implementation auth_pubkey_function */
+SSH_DEPRECATED LIBSSH_API enum ssh_publickey_state_e ssh_message_auth_publickey_state(ssh_message msg);
+
 LIBSSH_API int ssh_message_auth_reply_success(ssh_message msg,int partial);
 LIBSSH_API int ssh_message_auth_reply_pk_ok(ssh_message msg, ssh_string algo, ssh_string pubkey);
 LIBSSH_API int ssh_message_auth_reply_pk_ok_simple(ssh_message msg);
@@ -332,11 +352,12 @@ LIBSSH_API int ssh_message_channel_request_open_destination_port(ssh_message msg
 
 LIBSSH_API ssh_channel ssh_message_channel_request_channel(ssh_message msg);
 
-LIBSSH_API const char *ssh_message_channel_request_pty_term(ssh_message msg);
-LIBSSH_API int ssh_message_channel_request_pty_width(ssh_message msg);
-LIBSSH_API int ssh_message_channel_request_pty_height(ssh_message msg);
-LIBSSH_API int ssh_message_channel_request_pty_pxwidth(ssh_message msg);
-LIBSSH_API int ssh_message_channel_request_pty_pxheight(ssh_message msg);
+/* Replaced by callback based server implementation function channel_pty_request_function*/
+SSH_DEPRECATED LIBSSH_API const char *ssh_message_channel_request_pty_term(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_pty_width(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_pty_height(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_pty_pxwidth(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_pty_pxheight(ssh_message msg);
 
 LIBSSH_API const char *ssh_message_channel_request_env_name(ssh_message msg);
 LIBSSH_API const char *ssh_message_channel_request_env_value(ssh_message msg);
@@ -345,17 +366,18 @@ LIBSSH_API const char *ssh_message_channel_request_command(ssh_message msg);
 
 LIBSSH_API const char *ssh_message_channel_request_subsystem(ssh_message msg);
 
-LIBSSH_API int ssh_message_channel_request_x11_single_connection(ssh_message msg);
-LIBSSH_API const char *ssh_message_channel_request_x11_auth_protocol(ssh_message msg);
-LIBSSH_API const char *ssh_message_channel_request_x11_auth_cookie(ssh_message msg);
-LIBSSH_API int ssh_message_channel_request_x11_screen_number(ssh_message msg);
+/* Replaced by callback based server implementation function channel_open_request_x11_function*/
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_x11_single_connection(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API const char *ssh_message_channel_request_x11_auth_protocol(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API const char *ssh_message_channel_request_x11_auth_cookie(ssh_message msg);
+SSH_DEPRECATED LIBSSH_API int ssh_message_channel_request_x11_screen_number(ssh_message msg);
 
 LIBSSH_API const char *ssh_message_global_request_address(ssh_message msg);
 LIBSSH_API int ssh_message_global_request_port(ssh_message msg);
 
 LIBSSH_API int ssh_channel_open_reverse_forward(ssh_channel channel, const char *remotehost,
     int remoteport, const char *sourcehost, int localport);
-LIBSSH_API int ssh_channel_open_x11(ssh_channel channel, 
+LIBSSH_API int ssh_channel_open_x11(ssh_channel channel,
                                         const char *orig_addr, int orig_port);
 
 LIBSSH_API int ssh_channel_request_send_exit_status(ssh_channel channel,

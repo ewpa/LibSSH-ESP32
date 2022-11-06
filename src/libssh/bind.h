@@ -51,6 +51,7 @@ struct ssh_bind_struct {
   char *config_dir;
   char *pubkey_accepted_key_types;
   char* moduli_file;
+  int rsa_min_size;
 };
 
 struct ssh_poll_handle_struct *ssh_bind_get_poll(struct ssh_bind_struct

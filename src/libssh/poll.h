@@ -38,7 +38,9 @@ typedef struct ssh_pollfd_struct {
   short revents;    /* returned events */
 } ssh_pollfd_t;
 
+#if !defined ESP32 || ESP_IDF_VERSION_MAJOR < 4
 typedef unsigned long int nfds_t;
+#endif /* ESP32 */
 
 #ifdef _WIN32
 

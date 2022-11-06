@@ -34,6 +34,7 @@
 
 #include <mbedtls/ecdh.h>
 #include <mbedtls/ecp.h>
+#include "mbedcrypto-compat.h"
 
 #ifdef HAVE_ECDH
 
@@ -54,6 +55,10 @@ int ssh_client_ecdh_init(ssh_session session)
     mbedtls_ecp_group grp;
     int rc;
     mbedtls_ecp_group_id curve;
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_ecp_keypair *ecdh_privkey = NULL;
+
+    ctr_drbg = ssh_get_mbedtls_ctr_drbg_context();
 
     curve = ecdh_kex_type_to_curve(session->next_crypto->kex_type);
     if (curve == MBEDTLS_ECP_DP_NONE) {
@@ -70,7 +75,9 @@ int ssh_client_ecdh_init(ssh_session session)
         return SSH_ERROR;
     }
 
-    mbedtls_ecp_keypair_init(session->next_crypto->ecdh_privkey);
+    ecdh_privkey = session->next_crypto->ecdh_privkey;
+
+    mbedtls_ecp_keypair_init(ecdh_privkey);
     mbedtls_ecp_group_init(&grp);
 
     rc = mbedtls_ecp_group_load(&grp, curve);
@@ -80,10 +87,10 @@ int ssh_client_ecdh_init(ssh_session session)
     }
 
     rc = mbedtls_ecp_gen_keypair(&grp,
-                                 &session->next_crypto->ecdh_privkey->d,
-                                 &session->next_crypto->ecdh_privkey->Q,
-                                 mbedtls_ctr_drbg_random,
-                                 ssh_get_mbedtls_ctr_drbg_context());
+                     &ecdh_privkey->MBEDTLS_PRIVATE(d),
+                     &ecdh_privkey->MBEDTLS_PRIVATE(Q),
+                     mbedtls_ctr_drbg_random,
+                     ctr_drbg);
 
     if (rc != 0) {
         rc = SSH_ERROR;
@@ -91,7 +98,7 @@ int ssh_client_ecdh_init(ssh_session session)
     }
 
     client_pubkey = make_ecpoint_string(&grp,
-            &session->next_crypto->ecdh_privkey->Q);
+            &ecdh_privkey->MBEDTLS_PRIVATE(Q));
     if (client_pubkey == NULL) {
         rc = SSH_ERROR;
         goto out;
@@ -124,6 +131,10 @@ int ecdh_build_k(ssh_session session)
     mbedtls_ecp_point pubkey;
     int rc;
     mbedtls_ecp_group_id curve;
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_ecp_keypair *ecdh_privkey = NULL;
+
+    ctr_drbg = ssh_get_mbedtls_ctr_drbg_context();
 
     curve = ecdh_kex_type_to_curve(session->next_crypto->kex_type);
     if (curve == MBEDTLS_ECP_DP_NONE) {
@@ -162,19 +173,20 @@ int ecdh_build_k(ssh_session session)
 
     mbedtls_mpi_init(session->next_crypto->shared_secret);
 
+    ecdh_privkey = session->next_crypto->ecdh_privkey;
     rc = mbedtls_ecdh_compute_shared(&grp,
-                                     session->next_crypto->shared_secret,
-                                     &pubkey,
-                                     &session->next_crypto->ecdh_privkey->d,
-                                     mbedtls_ctr_drbg_random,
-                                     ssh_get_mbedtls_ctr_drbg_context());
+                     session->next_crypto->shared_secret,
+                     &pubkey,
+                     &ecdh_privkey->MBEDTLS_PRIVATE(d),
+                     mbedtls_ctr_drbg_random,
+                     ctr_drbg);
     if (rc != 0) {
         rc = SSH_ERROR;
         goto out;
     }
 
 out:
-    mbedtls_ecp_keypair_free(session->next_crypto->ecdh_privkey);
+    mbedtls_ecp_keypair_free(ecdh_privkey);
     SAFE_FREE(session->next_crypto->ecdh_privkey);
     mbedtls_ecp_group_free(&grp);
     mbedtls_ecp_point_free(&pubkey);
@@ -187,6 +199,8 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init){
     ssh_string q_c_string = NULL;
     ssh_string q_s_string = NULL;
     mbedtls_ecp_group grp;
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_ecp_keypair *ecdh_privkey = NULL;
     ssh_key privkey = NULL;
     enum ssh_digest_e digest = SSH_DIGEST_AUTO;
     ssh_string sig_blob = NULL;
@@ -214,10 +228,14 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init){
         return SSH_ERROR;
     }
 
+    ecdh_privkey = session->next_crypto->ecdh_privkey;
+
     session->next_crypto->ecdh_client_pubkey = q_c_string;
 
+    ctr_drbg = ssh_get_mbedtls_ctr_drbg_context();
+
     mbedtls_ecp_group_init(&grp);
-    mbedtls_ecp_keypair_init(session->next_crypto->ecdh_privkey);
+    mbedtls_ecp_keypair_init(ecdh_privkey);
 
     rc = mbedtls_ecp_group_load(&grp, curve);
     if (rc != 0) {
@@ -226,16 +244,16 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init){
     }
 
     rc = mbedtls_ecp_gen_keypair(&grp,
-                                 &session->next_crypto->ecdh_privkey->d,
-                                 &session->next_crypto->ecdh_privkey->Q,
-                                 mbedtls_ctr_drbg_random,
-                                 ssh_get_mbedtls_ctr_drbg_context());
+                     &ecdh_privkey->MBEDTLS_PRIVATE(d),
+                     &ecdh_privkey->MBEDTLS_PRIVATE(Q),
+                     mbedtls_ctr_drbg_random,
+                     ctr_drbg);
     if (rc != 0) {
         rc = SSH_ERROR;
         goto out;
     }
 
-    q_s_string = make_ecpoint_string(&grp, &session->next_crypto->ecdh_privkey->Q);
+    q_s_string = make_ecpoint_string(&grp, &ecdh_privkey->MBEDTLS_PRIVATE(Q));
     if (q_s_string == NULL) {
         rc = SSH_ERROR;
         goto out;

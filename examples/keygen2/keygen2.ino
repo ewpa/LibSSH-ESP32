@@ -4,7 +4,7 @@
 // Simple port of examples/keygen2.c on SPIFFS.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2021 Ewan Parker.
+// Copyright (C) 2016–2022 Ewan Parker.
 
 /*
  * keygen2.c - Generate SSH keys using libssh
@@ -66,6 +66,7 @@ struct arguments_st {
     unsigned long bits;
     char *file;
     char *passphrase;
+    int action_list;
 };
 
 static struct argp_option options[] = {
@@ -114,6 +115,14 @@ static struct argp_option options[] = {
         .doc   = "The type of the key to be generated. "
                  "Accepted values are: "
                  "\"rsa\", \"ecdsa\", \"ed25519\", and \"dsa\".\n",
+        .group = 0
+    },
+    {
+        .name  = "list",
+        .key   = 'l',
+        .arg   = NULL,
+        .flags = 0,
+        .doc   = "List the Fingerprint of the given key\n",
         .group = 0
     },
     {
@@ -188,6 +197,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
                 goto end;
             }
             break;
+        case 'l':
+            arguments->action_list = 1;
+            break;
         case ARGP_KEY_ARG:
             if (state->arg_num > 0) {
                 /* Too many arguments. */
@@ -213,98 +225,103 @@ static int validate_args(struct arguments_st *args)
         return EINVAL;
     }
 
-    switch(args->type) {
-        case SSH_KEYTYPE_RSA:
-            switch(args->bits) {
-                case 0:
-                    /* If not provided, use default value */
-                    args->bits = 3072;
-                    break;
-                case 1024:
-                case 2048:
-                case 3072:
-                case 4096:
-                case 8192:
-                    break;
-                default:
-                    fprintf(stderr, "Error: Invalid bits parameter provided\n");
-                    rc = EINVAL;
-                    break;
-            }
+    /* no other arguments needed for listing key fingerprints */
+    if (args->action_list) {
+        return 0;
+    }
 
-            if (args->file == NULL) {
-                args->file = strdup("id_rsa");
-                if (args->file == NULL) {
-                    rc = ENOMEM;
-                    break;
-                }
-            }
-
+    switch (args->type) {
+    case SSH_KEYTYPE_RSA:
+        switch (args->bits) {
+        case 0:
+            /* If not provided, use default value */
+            args->bits = 3072;
             break;
-        case SSH_KEYTYPE_ECDSA:
-            switch(args->bits) {
-                case 0:
-                    /* If not provided, use default value */
-                    args->bits = 256;
-                    break;
-                case 256:
-                case 384:
-                case 521:
-                    break;
-                default:
-                    fprintf(stderr, "Error: Invalid bits parameter provided\n");
-                    rc = EINVAL;
-                    break;
-            }
-            if (args->file == NULL) {
-                args->file = strdup("id_ecdsa");
-                if (args->file == NULL) {
-                    rc = ENOMEM;
-                    break;
-                }
-            }
-
-            break;
-        case SSH_KEYTYPE_DSS:
-            switch(args->bits) {
-                case 0:
-                    /* If not provided, use default value */
-                    args->bits = 1024;
-                    break;
-                case 1024:
-                case 2048:
-                    break;
-                default:
-                    fprintf(stderr, "Error: Invalid bits parameter provided\n");
-                    rc = EINVAL;
-                    break;
-            }
-            if (args->file == NULL) {
-                args->file = strdup("id_dsa");
-                if (args->file == NULL) {
-                    rc = ENOMEM;
-                    break;
-                }
-            }
-
-            break;
-        case SSH_KEYTYPE_ED25519:
-            /* Ignore value and overwrite with a zero */
-            args->bits = 0;
-
-            if (args->file == NULL) {
-                args->file = strdup("id_ed25519");
-                if (args->file == NULL) {
-                    rc = ENOMEM;
-                    break;
-                }
-            }
-
+        case 1024:
+        case 2048:
+        case 3072:
+        case 4096:
+        case 8192:
             break;
         default:
-            fprintf(stderr, "Error: unknown key type\n");
+            fprintf(stderr, "Error: Invalid bits parameter provided\n");
             rc = EINVAL;
             break;
+        }
+
+        if (args->file == NULL) {
+            args->file = strdup("id_rsa");
+            if (args->file == NULL) {
+                rc = ENOMEM;
+                break;
+            }
+        }
+
+        break;
+    case SSH_KEYTYPE_ECDSA:
+        switch (args->bits) {
+        case 0:
+            /* If not provided, use default value */
+            args->bits = 256;
+            break;
+        case 256:
+        case 384:
+        case 521:
+            break;
+        default:
+            fprintf(stderr, "Error: Invalid bits parameter provided\n");
+            rc = EINVAL;
+            break;
+        }
+        if (args->file == NULL) {
+            args->file = strdup("id_ecdsa");
+            if (args->file == NULL) {
+                rc = ENOMEM;
+                break;
+            }
+        }
+
+        break;
+    case SSH_KEYTYPE_DSS:
+        switch (args->bits) {
+        case 0:
+            /* If not provided, use default value */
+            args->bits = 1024;
+            break;
+        case 1024:
+        case 2048:
+            break;
+        default:
+            fprintf(stderr, "Error: Invalid bits parameter provided\n");
+            rc = EINVAL;
+            break;
+        }
+        if (args->file == NULL) {
+            args->file = strdup("id_dsa");
+            if (args->file == NULL) {
+                rc = ENOMEM;
+                break;
+            }
+        }
+
+        break;
+    case SSH_KEYTYPE_ED25519:
+        /* Ignore value and overwrite with a zero */
+        args->bits = 0;
+
+        if (args->file == NULL) {
+            args->file = strdup("id_ed25519");
+            if (args->file == NULL) {
+                rc = ENOMEM;
+                break;
+            }
+        }
+
+        break;
+    default:
+        fprintf(stderr, "Error: unknown key type\n");
+        rc = EINVAL;
+        break;
     }
 
     return rc;
@@ -316,6 +333,30 @@ static char doc[] = "Generate an SSH key pair. "
 
 /* Our argp parser */
 static struct argp argp = {options, parse_opt, NULL, doc, NULL, NULL, NULL};
+
+static void list_fingerprint(char *file)
+{
+    ssh_key key = NULL;
+    unsigned char *hash = NULL;
+    size_t hlen = 0;
+    int rc;
+
+    rc = ssh_pki_import_privkey_file(file, NULL, NULL, NULL, &key);
+    if (rc != SSH_OK) {
+        fprintf(stderr, "Failed to import private key %s\n", file);
+        return;
+    }
+
+    rc = ssh_get_publickey_hash(key, SSH_PUBLICKEY_HASH_SHA256, &hash, &hlen);
+    if (rc != SSH_OK) {
+        fprintf(stderr, "Failed to get key fingerprint\n");
+        return;
+    }
+    ssh_print_hash(SSH_PUBLICKEY_HASH_SHA256, hash, hlen);
+
+    ssh_clean_pubkey_hash(&hash);
+    ssh_key_free(key);
+}
 // EXAMPLE functions FINISH
 
 // EXAMPLE main START
@@ -331,6 +372,7 @@ int ex_main(int argc, char **argv){
         .bits = 0,
         .file = NULL,
         .passphrase = NULL,
+        .action_list = 0,
     };
 
     if (argc < 2) {
@@ -345,6 +387,11 @@ int ex_main(int argc, char **argv){
 
     rc = validate_args(&arguments);
     if (rc != 0) {
+        goto end;
+    }
+
+    if (arguments.action_list && arguments.file) {
+        list_fingerprint(arguments.file);
         goto end;
     }
 

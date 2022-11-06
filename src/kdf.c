@@ -39,7 +39,7 @@
 
 
 /* The following implements the SSHKDF for crypto backend that
- * do not have a native implementations */
+ * do not have a native implementation */
 struct ssh_mac_ctx_struct {
     enum ssh_kdf_digest digest_type;
     union {
@@ -116,14 +116,13 @@ static void ssh_mac_final(unsigned char *md, ssh_mac_ctx ctx)
 
 int sshkdf_derive_key(struct ssh_crypto_struct *crypto,
                       unsigned char *key, size_t key_len,
-                      int key_type, unsigned char *output,
+                      uint8_t key_type, unsigned char *output,
                       size_t requested_len)
 {
     /* Can't use VLAs with Visual Studio, so allocate the biggest
      * digest buffer we can possibly need */
     unsigned char digest[DIGEST_MAX_LEN];
     size_t output_len = crypto->digest_len;
-    char letter = key_type;
     ssh_mac_ctx ctx;
 
     if (DIGEST_MAX_LEN < crypto->digest_len) {
@@ -137,7 +136,7 @@ int sshkdf_derive_key(struct ssh_crypto_struct *crypto,
 
     ssh_mac_update(ctx, key, key_len);
     ssh_mac_update(ctx, crypto->secret_hash, crypto->digest_len);
-    ssh_mac_update(ctx, &letter, 1);
+    ssh_mac_update(ctx, &key_type, 1);
     ssh_mac_update(ctx, crypto->session_id, crypto->session_id_len);
     ssh_mac_final(digest, ctx);
 

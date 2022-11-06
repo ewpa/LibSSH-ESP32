@@ -43,7 +43,7 @@
 
 #include "libssh/priv.h"
 
-#define MAX_MATCH_RECURSION 32
+#define MAX_MATCH_RECURSION 16
 
 /*
  * Returns true if the given string matches the pattern (which may contain ?
@@ -51,74 +51,77 @@
  */
 static int match_pattern(const char *s, const char *pattern, size_t limit)
 {
-  bool had_asterisk = false;
-  if (s == NULL || pattern == NULL || limit <= 0) {
-    return 0;
-  }
+    bool had_asterisk = false;
 
-  for (;;) {
-    /* If at end of pattern, accept if also at end of string. */
-    if (*pattern == '\0') {
-        return (*s == '\0');
-    }
-
-    while (*pattern == '*') {
-      /* Skip the asterisk. */
-      had_asterisk = true;
-      pattern++;
-    }
-
-    if (had_asterisk) {
-      /* If at end of pattern, accept immediately. */
-      if (!*pattern)
-        return 1;
-
-      /* If next character in pattern is known, optimize. */
-      if (*pattern != '?') {
-        /*
-         * Look instances of the next character in
-         * pattern, and try to match starting from
-         * those.
-         */
-        for (; *s; s++)
-          if (*s == *pattern && match_pattern(s + 1, pattern + 1, limit - 1)) {
-            return 1;
-          }
-        /* Failed. */
+    if (s == NULL || pattern == NULL || limit <= 0) {
         return 0;
-      }
-      /*
-       * Move ahead one character at a time and try to
-       * match at each position.
-       */
-      for (; *s; s++) {
-        if (match_pattern(s, pattern, limit - 1)) {
-          return 1;
+    }
+
+    for (;;) {
+        /* If at end of pattern, accept if also at end of string. */
+        if (*pattern == '\0') {
+            return (*s == '\0');
         }
-      }
-      /* Failed. */
-      return 0;
-    }
-    /*
-     * There must be at least one more character in the string.
-     * If we are at the end, fail.
-     */
-    if (!*s) {
-      return 0;
+
+        /* Skip all the asterisks and adjacent question marks */
+        while (*pattern == '*' || (had_asterisk && *pattern == '?')) {
+            if (*pattern == '*') {
+                had_asterisk = true;
+            }
+            pattern++;
+        }
+
+        if (had_asterisk) {
+            /* If at end of pattern, accept immediately. */
+            if (!*pattern)
+                return 1;
+
+            /* If next character in pattern is known, optimize. */
+            if (*pattern != '?') {
+                /*
+                 * Look instances of the next character in
+                 * pattern, and try to match starting from
+                 * those.
+                 */
+                for (; *s; s++)
+                    if (*s == *pattern && match_pattern(s + 1, pattern + 1, limit - 1)) {
+                        return 1;
+                    }
+                /* Failed. */
+                return 0;
+            }
+            /*
+             * Move ahead one character at a time and try to
+             * match at each position.
+             */
+            for (; *s; s++) {
+                if (match_pattern(s, pattern, limit - 1)) {
+                    return 1;
+                }
+            }
+            /* Failed. */
+            return 0;
+        }
+        /*
+         * There must be at least one more character in the string.
+         * If we are at the end, fail.
+         */
+        if (!*s) {
+            return 0;
+        }
+
+        /* Check if the next character of the string is acceptable. */
+        if (*pattern != '?' && *pattern != *s) {
+            return 0;
+        }
+
+        /* Move to the next character, both in string and in pattern. */
+        s++;
+        pattern++;
     }
 
-    /* Check if the next character of the string is acceptable. */
-    if (*pattern != '?' && *pattern != *s) {
-      return 0;
-    }
-
-    /* Move to the next character, both in string and in pattern. */
-    s++;
-    pattern++;
-  }
-
-  /* NOTREACHED */
-  return 0;
+    /* NOTREACHED */
+    return 0;
 }
 
 /*
@@ -128,11 +131,11 @@ static int match_pattern(const char *s, const char *pattern, size_t limit)
  * no match at all.
  */
 int match_pattern_list(const char *string, const char *pattern,
-    unsigned int len, int dolower) {
+    size_t len, int dolower) {
   char sub[1024];
   int negated;
   int got_positive;
-  unsigned int i, subi;
+  size_t i, subi;
 
   got_positive = 0;
   for (i = 0; i < len;) {

@@ -4,7 +4,7 @@
 // Simple port of examples/libssh_scp.c over WiFi.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2021 Ewan Parker.
+// Copyright (C) 2016–2022 Ewan Parker.
 
 /* libssh_scp.c
  * Sample implementation of a SCP client
@@ -31,6 +31,8 @@ const char *configSTAPSK = "YourWiFiPSK";
 // Stack size needed to run SSH and the command parser.
 const unsigned int configSTACK = 40960;
 
+#include "IPv6Address.h"
+#include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
 
@@ -73,8 +75,6 @@ enum {
 struct _reent reent_data_esp32;
 struct _reent *_impure_ptr = &reent_data_esp32;
 
-#include "IPv6Address.h"
-#include "WiFi.h"
 volatile bool wifiPhyConnected;
 
 // Timing and timeout configuration.

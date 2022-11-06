@@ -88,16 +88,16 @@
 #endif /* HAVE_LIBCRYPTO */
 
 #ifdef WITH_ZLIB
-#define ZLIB "none,zlib,zlib@openssh.com"
+#define ZLIB "none,zlib@openssh.com,zlib"
 #else
 #define ZLIB "none"
-#endif
+#endif /* WITH_ZLIB */
 
 #ifdef HAVE_CURVE25519
 #define CURVE25519 "curve25519-sha256,curve25519-sha256@libssh.org,"
 #else
 #define CURVE25519 ""
-#endif
+#endif /* HAVE_CURVE25519 */
 
 #ifdef HAVE_ECDH
 #define ECDH "ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,"
@@ -109,7 +109,7 @@
 #define EC_HOSTKEYS ""
 #define EC_PUBLIC_KEY_ALGORITHMS ""
 #define ECDH ""
-#endif
+#endif /* HAVE_ECDH */
 
 #ifdef HAVE_DSA
 #define DSA_HOSTKEYS ",ssh-dss"
@@ -117,13 +117,13 @@
 #else
 #define DSA_HOSTKEYS ""
 #define DSA_PUBLIC_KEY_ALGORITHMS ""
-#endif
+#endif /* HAVE_DSA */
 
 #ifdef WITH_INSECURE_NONE
 #define NONE ",none"
 #else
 #define NONE
-#endif
+#endif /* WITH_INSECURE_NONE */
 
 #define HOSTKEYS "ssh-ed25519," \
                  EC_HOSTKEYS \
@@ -229,8 +229,8 @@ static const char *default_methods[] = {
     AES,
     "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512",
     "hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512",
-    "none",
-    "none",
+    ZLIB,
+    ZLIB,
     "",
     "",
     NULL
@@ -965,13 +965,13 @@ char *ssh_keep_known_algos(enum ssh_kex_types_e algo, const char *list)
 /**
  * @internal
  *
- * @brief Return a new allocated string containing only the FIPS allowed
+ * @brief Return a newly allocated string containing only the FIPS allowed
  * algorithms from the list.
  *
  * @param[in] algo  The type of the methods to filter
  * @param[in] list  The list to be filtered
  *
- * @return A new allocated list containing only the FIPS allowed algorithms from
+ * @return A newly allocated list containing only the FIPS allowed algorithms from
  * the list; NULL in case of error.
  */
 char *ssh_keep_fips_algos(enum ssh_kex_types_e algo, const char *list)
@@ -990,10 +990,18 @@ int ssh_make_sessionid(ssh_session session)
     ssh_buffer client_hash = NULL;
     ssh_buffer buf = NULL;
     ssh_string server_pubkey_blob = NULL;
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
     const_bignum client_pubkey, server_pubkey;
+#else
+    bignum client_pubkey = NULL, server_pubkey = NULL;
+#endif /* OPENSSL_VERSION_NUMBER */
 #ifdef WITH_GEX
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
     const_bignum modulus, generator;
-#endif
+#else
+    bignum modulus = NULL, generator = NULL;
+#endif /* OPENSSL_VERSION_NUMBER */
+#endif /* WITH_GEX */
     int rc = SSH_ERROR;
 
     buf = ssh_buffer_new();
@@ -1086,6 +1094,10 @@ int ssh_make_sessionid(ssh_session session)
         if (rc != SSH_OK) {
             goto error;
         }
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+        bignum_safe_free(client_pubkey);
+        bignum_safe_free(server_pubkey);
+#endif /* OPENSSL_VERSION_NUMBER */
         break;
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:
@@ -1117,6 +1129,10 @@ int ssh_make_sessionid(ssh_session session)
         if (rc != SSH_OK) {
             goto error;
         }
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+        bignum_safe_free(modulus);
+        bignum_safe_free(generator);
+#endif /* OPENSSL_VERSION_NUMBER */
         break;
 #endif /* WITH_GEX */
 #ifdef HAVE_ECDH
@@ -1136,7 +1152,7 @@ int ssh_make_sessionid(ssh_session session)
             goto error;
         }
         break;
-#endif
+#endif /* HAVE_ECDH */
 #ifdef HAVE_CURVE25519
     case SSH_KEX_CURVE25519_SHA256:
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
@@ -1151,7 +1167,7 @@ int ssh_make_sessionid(ssh_session session)
             goto error;
         }
         break;
-#endif
+#endif /* HAVE_CURVE25519 */
     }
     rc = ssh_buffer_pack(buf, "B", session->next_crypto->shared_secret);
     if (rc != SSH_OK) {
@@ -1175,7 +1191,7 @@ int ssh_make_sessionid(ssh_session session)
             ssh_set_error_oom(session);
             goto error;
         }
-        sha1(ssh_buffer_get(buf), ssh_buffer_get_len(buf),
+        sha1_esp32_port(ssh_buffer_get(buf), ssh_buffer_get_len(buf),
                                    session->next_crypto->secret_hash);
         break;
     case SSH_KEX_DH_GROUP14_SHA256:
@@ -1240,7 +1256,7 @@ int ssh_make_sessionid(ssh_session session)
     SSH_LOG(SSH_LOG_DEBUG, "Session hash: \n");
     ssh_log_hexdump("secret hash", session->next_crypto->secret_hash, session->next_crypto->digest_len);
     ssh_log_hexdump("session id", session->next_crypto->session_id, session->next_crypto->session_id_len);
-#endif
+#endif /* DEBUG_CRYPTO */
 
     rc = SSH_OK;
 error:
@@ -1252,6 +1268,10 @@ error:
     session->out_hashbuf = NULL;
 
     SSH_STRING_FREE(num);
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+    bignum_safe_free(client_pubkey);
+    bignum_safe_free(server_pubkey);
+#endif /* OPENSSL_VERSION_NUMBER */
 
     return rc;
 }
@@ -1436,7 +1456,7 @@ int ssh_generate_session_keys(ssh_session session)
                    intkey_cli_to_srv_len);
     ssh_log_hexdump("Server to Client Integrity Key", intkey_srv_to_cli,
                    intkey_srv_to_cli_len);
-#endif
+#endif /* DEBUG_CRYPTO */
 
     rc = 0;
 error:

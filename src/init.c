@@ -104,7 +104,7 @@ _ret:
 /**
  * @brief Initialize global cryptographic data structures.
  *
- * This functions is automatically called when the library is loaded.
+ * This function is automatically called when the library is loaded.
  *
  */
 void libssh_constructor(void)
@@ -127,7 +127,7 @@ void libssh_constructor(void)
  * The libssh library is implementing the SSH protocols and some of its
  * extensions. This group of functions is mostly used to implement an SSH
  * client.
- * Some function are needed to implement an SSH server too.
+ * Some functions are needed to implement an SSH server too.
  *
  * @{
  */
@@ -136,8 +136,8 @@ void libssh_constructor(void)
  * @brief Initialize global cryptographic data structures.
  *
  * Since version 0.8.0, when libssh is dynamically linked, it is not necessary
- * to call this function on systems which are fully supported with regards to
- * threading (that is, system with pthreads available).
+ * to call this function on systems that fully support threading (that is,
+ * systems with pthreads available).
  *
  * If libssh is statically linked, it is necessary to explicitly call ssh_init()
  * before calling any other provided API, and it is necessary to explicitly call
@@ -161,12 +161,14 @@ static int _ssh_finalize(unsigned destructor) {
 
         if (_ssh_initialized > 1) {
             _ssh_initialized--;
-            goto _ret;
+            ssh_mutex_unlock(&ssh_init_mutex);
+            return 0;
         }
 
         if (_ssh_initialized == 1) {
             if (_ssh_init_ret < 0) {
-                goto _ret;
+                ssh_mutex_unlock(&ssh_init_mutex);
+                return 0;
             }
         }
     }
@@ -181,15 +183,22 @@ static int _ssh_finalize(unsigned destructor) {
 
     _ssh_initialized = 0;
 
-_ret:
     if (!destructor) {
         ssh_mutex_unlock(&ssh_init_mutex);
     }
+
+#if (defined(_WIN32) && !defined(HAVE_PTHREAD))
+    if (ssh_init_mutex != NULL) {
+        DeleteCriticalSection(ssh_init_mutex);
+        SAFE_FREE(ssh_init_mutex);
+    }
+#endif
+
     return 0;
 }
 
 /**
- * @brief Finalize and cleanup all libssh and cryptographic data structures.
+ * @brief Finalize and clean up all libssh and cryptographic data structures.
  *
  * This function is automatically called when the library is unloaded.
  *
@@ -206,7 +215,7 @@ void libssh_destructor(void)
 }
 
 /**
- * @brief Finalize and cleanup all libssh and cryptographic data structures.
+ * @brief Finalize and clean up all libssh and cryptographic data structures.
  *
  * Since version 0.8.0, when libssh is dynamically linked, it is not necessary
  * to call this function, since it is automatically called when the library is

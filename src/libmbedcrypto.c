@@ -27,6 +27,7 @@
 #include "libssh/crypto.h"
 #include "libssh/priv.h"
 #include "libssh/misc.h"
+#include "mbedcrypto-compat.h"
 #if defined(MBEDTLS_CHACHA20_C) && defined(MBEDTLS_POLY1305_C)
 #include "libssh/bytearray.h"
 #include "libssh/chacha20-poly1305-common.h"
@@ -41,73 +42,13 @@
 #endif /* MBEDTLS_GCM_C */
 
 static mbedtls_entropy_context ssh_mbedtls_entropy;
-static mbedtls_ctr_drbg_context ssh_mbedtls_ctr_drbg;
+extern mbedtls_ctr_drbg_context ssh_mbedtls_ctr_drbg;
 
 static int libmbedcrypto_initialized = 0;
 
 void ssh_reseed(void)
 {
     mbedtls_ctr_drbg_reseed(&ssh_mbedtls_ctr_drbg, NULL, 0);
-}
-
-int ssh_get_random(void *where, int len, int strong)
-{
-    return ssh_mbedtls_random(where, len, strong);
-}
-
-SHACTX sha1_init(void)
-{
-    SHACTX ctx = NULL;
-    int rc;
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA1);
-
-    if (md_info == NULL) {
-        return NULL;
-    }
-
-    ctx = malloc(sizeof(mbedtls_md_context_t));
-    if (ctx == NULL) {
-        return NULL;
-    }
-
-    mbedtls_md_init(ctx);
-
-    rc = mbedtls_md_setup(ctx, md_info, 0);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    rc = mbedtls_md_starts(ctx);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-void sha1_update_esp32_port(SHACTX c, const void *data, unsigned long len)
-{
-    mbedtls_md_update(c, data, len);
-}
-
-void sha1_final(unsigned char *md, SHACTX c)
-{
-    mbedtls_md_finish(c, md);
-    mbedtls_md_free(c);
-    SAFE_FREE(c);
-}
-
-__attribute__((weak))
-void sha1(const unsigned char *digest, int len, unsigned char *hash)
-{
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA1);
-    if (md_info != NULL) {
-        mbedtls_md(md_info, digest, len, hash);
-    }
 }
 
 static mbedtls_md_type_t nid_to_md_algo(int nid)
@@ -123,7 +64,7 @@ static mbedtls_md_type_t nid_to_md_algo(int nid)
     return MBEDTLS_MD_NONE;
 }
 
-void evp(int nid, unsigned char *digest, int len,
+void evp(int nid, unsigned char *digest, size_t len,
         unsigned char *hash, unsigned int *hlen)
 {
     mbedtls_md_type_t algo = nid_to_md_algo(nid);
@@ -171,234 +112,29 @@ EVPCTX evp_init(int nid)
     return ctx;
 }
 
-void evp_update(EVPCTX ctx, const void *data, unsigned long len)
+void evp_update(EVPCTX ctx, const void *data, size_t len)
 {
     mbedtls_md_update(ctx, data, len);
 }
 
 void evp_final(EVPCTX ctx, unsigned char *md, unsigned int *mdlen)
 {
-    *mdlen = mbedtls_md_get_size(ctx->md_info);
+    *mdlen = mbedtls_md_get_size(ctx->MBEDTLS_PRIVATE(md_info));
     mbedtls_md_finish(ctx, md);
     mbedtls_md_free(ctx);
     SAFE_FREE(ctx);
 }
 
-SHA256CTX sha256_init(void)
-{
-    SHA256CTX ctx = NULL;
-    int rc;
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-
-    if (md_info == NULL) {
-        return NULL;
-    }
-
-    ctx = malloc(sizeof(mbedtls_md_context_t));
-    if(ctx == NULL) {
-        return NULL;
-    }
-
-    mbedtls_md_init(ctx);
-
-    rc = mbedtls_md_setup(ctx, md_info, 0);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    rc = mbedtls_md_starts(ctx);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-void sha256_update(SHA256CTX c, const void *data, unsigned long len)
-{
-    mbedtls_md_update(c, data, len);
-}
-
-void sha256_final(unsigned char *md, SHA256CTX c)
-{
-    mbedtls_md_finish(c, md);
-    mbedtls_md_free(c);
-    SAFE_FREE(c);
-}
-
-void sha256(const unsigned char *digest, int len, unsigned char *hash)
-{
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    if (md_info != NULL) {
-        mbedtls_md(md_info, digest, len, hash);
-    }
-}
-
-SHA384CTX sha384_init(void)
-{
-    SHA384CTX ctx = NULL;
-    int rc;
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA384);
-
-    if (md_info == NULL) {
-        return NULL;
-    }
-
-    ctx = malloc(sizeof(mbedtls_md_context_t));
-    if (ctx == NULL) {
-        return NULL;
-    }
-
-    mbedtls_md_init(ctx);
-
-    rc = mbedtls_md_setup(ctx, md_info, 0);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    rc = mbedtls_md_starts(ctx);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-void sha384_update(SHA384CTX c, const void *data, unsigned long len)
-{
-    mbedtls_md_update(c, data, len);
-}
-
-void sha384_final(unsigned char *md, SHA384CTX c)
-{
-    mbedtls_md_finish(c, md);
-    mbedtls_md_free(c);
-    SAFE_FREE(c);
-}
-
-void sha384(const unsigned char *digest, int len, unsigned char *hash)
-{
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA384);
-    if (md_info != NULL) {
-        mbedtls_md(md_info, digest, len, hash);
-    }
-}
-
-SHA512CTX sha512_init(void)
-{
-    SHA512CTX ctx = NULL;
-    int rc;
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA512);
-    if (md_info == NULL) {
-        return NULL;
-    }
-
-    ctx = malloc(sizeof(mbedtls_md_context_t));
-    if (ctx == NULL) {
-        return NULL;
-    }
-
-    mbedtls_md_init(ctx);
-
-    rc = mbedtls_md_setup(ctx, md_info, 0);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    rc = mbedtls_md_starts(ctx);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-void sha512_update(SHA512CTX c, const void *data, unsigned long len)
-{
-    mbedtls_md_update(c, data, len);
-}
-
-void sha512_final(unsigned char *md, SHA512CTX c)
-{
-    mbedtls_md_finish(c, md);
-    mbedtls_md_free(c);
-    SAFE_FREE(c);
-}
-
-void sha512(const unsigned char *digest, int len, unsigned char *hash)
-{
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA512);
-    if (md_info != NULL) {
-        mbedtls_md(md_info, digest, len, hash);
-    }
-}
-
-MD5CTX md5_init(void)
-{
-    MD5CTX ctx = NULL;
-    int rc;
-    const mbedtls_md_info_t *md_info =
-        mbedtls_md_info_from_type(MBEDTLS_MD_MD5);
-    if (md_info == NULL) {
-        return NULL;
-    }
-
-    ctx = malloc(sizeof(mbedtls_md_context_t));
-    if (ctx == NULL) {
-        return NULL;
-    }
-
-    mbedtls_md_init(ctx);
-
-    rc = mbedtls_md_setup(ctx, md_info, 0);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    rc = mbedtls_md_starts(ctx);
-    if (rc != 0) {
-        SAFE_FREE(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-
-void md5_update_esp32_port(MD5CTX c, const void *data, unsigned long len) {
-    mbedtls_md_update(c, data, len);
-}
-
-void md5_final(unsigned char *md, MD5CTX c)
-{
-    mbedtls_md_finish(c, md);
-    mbedtls_md_free(c);
-    SAFE_FREE(c);
-}
-
 int ssh_kdf(struct ssh_crypto_struct *crypto,
             unsigned char *key, size_t key_len,
-            int key_type, unsigned char *output,
+            uint8_t key_type, unsigned char *output,
             size_t requested_len)
 {
     return sshkdf_derive_key(crypto, key, key_len,
                              key_type, output, requested_len);
 }
 
-HMACCTX hmac_init(const void *key, int len, enum ssh_hmac_e type)
+HMACCTX hmac_init(const void *key, size_t len, enum ssh_hmac_e type)
 {
     HMACCTX ctx = NULL;
     const mbedtls_md_info_t *md_info = NULL;
@@ -447,17 +183,21 @@ error:
     return NULL;
 }
 
-void hmac_update(HMACCTX c, const void *data, unsigned long len)
+/* mbedtls returns 0 on success, but in this context
+ * success is 1 */
+int hmac_update(HMACCTX c, const void *data, size_t len)
 {
-    mbedtls_md_hmac_update(c, data, len);
+    return !mbedtls_md_hmac_update(c, data, len);
 }
 
-void hmac_final(HMACCTX c, unsigned char *hashmacbuf, unsigned int *len)
+int hmac_final(HMACCTX c, unsigned char *hashmacbuf, size_t *len)
 {
-    *len = mbedtls_md_get_size(c->md_info);
-    mbedtls_md_hmac_finish(c, hashmacbuf);
+    int rc;
+    *len = (unsigned int)mbedtls_md_get_size(c->md_info);
+    rc = !mbedtls_md_hmac_finish(c, hashmacbuf);
     mbedtls_md_free(c);
     SAFE_FREE(c);
+    return rc;
 }
 
 static int
@@ -468,6 +208,8 @@ cipher_init(struct ssh_cipher_struct *cipher,
 {
     const mbedtls_cipher_info_t *cipher_info = NULL;
     mbedtls_cipher_context_t *ctx;
+    size_t key_bitlen = 0;
+    size_t iv_size = 0;
     int rc;
 
     if (operation == MBEDTLS_ENCRYPT) {
@@ -488,15 +230,15 @@ cipher_init(struct ssh_cipher_struct *cipher,
         goto error;
     }
 
-    rc = mbedtls_cipher_setkey(ctx, key,
-                               cipher_info->key_bitlen,
-                               operation);
+    key_bitlen = mbedtls_cipher_info_get_key_bitlen(cipher_info);
+    rc = mbedtls_cipher_setkey(ctx, key, key_bitlen, operation);
     if (rc != 0) {
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_setkey failed");
         goto error;
     }
 
-    rc = mbedtls_cipher_set_iv(ctx, IV, cipher_info->iv_size);
+    iv_size = mbedtls_cipher_info_get_iv_size(cipher_info);
+    rc = mbedtls_cipher_set_iv(ctx, IV, iv_size);
     if (rc != 0) {
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_cipher_set_iv failed");
         goto error;
@@ -574,15 +316,16 @@ cipher_set_key_gcm(struct ssh_cipher_struct *cipher,
                    void *IV)
 {
     const mbedtls_cipher_info_t *cipher_info = NULL;
+    size_t key_bitlen = 0;
     int rc;
 
     mbedtls_gcm_init(&cipher->gcm_ctx);
     cipher_info = mbedtls_cipher_info_from_type(cipher->type);
 
-    rc = mbedtls_gcm_setkey(&cipher->gcm_ctx,
-                            MBEDTLS_CIPHER_ID_AES,
-                            key,
-                            cipher_info->key_bitlen);
+    key_bitlen = mbedtls_cipher_info_get_key_bitlen(cipher_info);
+    rc = mbedtls_gcm_setkey(&cipher->gcm_ctx, MBEDTLS_CIPHER_ID_AES,
+                            key, key_bitlen);
+
     if (rc != 0) {
         SSH_LOG(SSH_LOG_WARNING, "mbedtls_gcm_setkey failed");
         goto error;
@@ -1449,22 +1192,6 @@ int ssh_crypto_init(void)
     libmbedcrypto_initialized = 1;
 
     return SSH_OK;
-}
-
-int ssh_mbedtls_random(void *where, int len, int strong)
-{
-    int rc = 0;
-    if (strong) {
-        mbedtls_ctr_drbg_set_prediction_resistance(&ssh_mbedtls_ctr_drbg,
-                MBEDTLS_CTR_DRBG_PR_ON);
-        rc = mbedtls_ctr_drbg_random(&ssh_mbedtls_ctr_drbg, where, len);
-        mbedtls_ctr_drbg_set_prediction_resistance(&ssh_mbedtls_ctr_drbg,
-                MBEDTLS_CTR_DRBG_PR_OFF);
-    } else {
-        rc = mbedtls_ctr_drbg_random(&ssh_mbedtls_ctr_drbg, where, len);
-    }
-
-    return !rc;
 }
 
 mbedtls_ctr_drbg_context *ssh_get_mbedtls_ctr_drbg_context(void)

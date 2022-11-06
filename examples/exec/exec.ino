@@ -4,7 +4,7 @@
 // Simple port of examples/template.c over WiFi.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2021 Ewan Parker.
+// Copyright (C) 2016–2022 Ewan Parker.
 
 /* simple exec example */
 
@@ -18,6 +18,8 @@ const char *configSTAPSK = "YourWiFiPSK";
 // Stack size needed to run SSH and the command parser.
 const unsigned int configSTACK = 51200;
 
+#include "IPv6Address.h"
+#include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
 
@@ -26,8 +28,6 @@ const unsigned int configSTACK = 51200;
 #include "examples_common.h"
 // EXAMPLE includes/defines FINISH
 
-#include "IPv6Address.h"
-#include "WiFi.h"
 volatile bool wifiPhyConnected;
 
 // Timing and timeout configuration.
@@ -497,7 +497,7 @@ int ex_main(int argc, char **argv){
         return 1;
     }
 
-    channel = ssh_channel_new(session);;
+    channel = ssh_channel_new(session);
     if (channel == NULL) {
         ssh_disconnect(session);
         ssh_free(session);

@@ -142,7 +142,7 @@ const char *ssh_get_error(void *error) {
  *         SSH_FATAL          A fatal error occurred. This could be an unexpected
  *                            disconnection\n
  *
- *         Other error codes are internal but can be considered same than
+ *         Other error codes are internal but can be considered the same as
  *         SSH_FATAL.
  */
 int ssh_get_error_code(void *error) {

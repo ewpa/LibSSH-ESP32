@@ -77,7 +77,6 @@ struct ssh_agent_struct {
   ssh_channel channel;
 };
 
-#ifndef _WIN32
 /* agent.c */
 /**
  * @brief Create a new ssh agent structure.
@@ -115,6 +114,5 @@ ssh_key ssh_agent_get_first_ident(struct ssh_session_struct *session,
 ssh_string ssh_agent_sign_data(ssh_session session,
                                const ssh_key pubkey,
                                struct ssh_buffer_struct *data);
-#endif
 
 #endif /* __AGENT_H */

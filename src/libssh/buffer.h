@@ -63,9 +63,9 @@ int ssh_buffer_prepend_data(ssh_buffer buffer, const void *data, uint32_t len);
 int ssh_buffer_add_buffer(ssh_buffer buffer, ssh_buffer source);
 
 /* buffer_read_*() returns the number of bytes read, except for ssh strings */
-int ssh_buffer_get_u8(ssh_buffer buffer, uint8_t *data);
-int ssh_buffer_get_u32(ssh_buffer buffer, uint32_t *data);
-int ssh_buffer_get_u64(ssh_buffer buffer, uint64_t *data);
+uint32_t ssh_buffer_get_u8(ssh_buffer buffer, uint8_t *data);
+uint32_t ssh_buffer_get_u32(ssh_buffer buffer, uint32_t *data);
+uint32_t ssh_buffer_get_u64(ssh_buffer buffer, uint64_t *data);
 
 /* ssh_buffer_get_ssh_string() is an exception. if the String read is too large or invalid, it will answer NULL. */
 ssh_string ssh_buffer_get_ssh_string(ssh_buffer buffer);

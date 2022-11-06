@@ -39,7 +39,7 @@
 #include "libssh/pki.h"
 #include "libssh/bignum.h"
 
-#ifdef HAVE_OPENSSL_X25519
+#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_X25519)
 #include <openssl/err.h>
 #endif
 
@@ -59,7 +59,7 @@ static struct ssh_packet_callbacks_struct ssh_curve25519_client_callbacks = {
 static int ssh_curve25519_init(ssh_session session)
 {
     int rc;
-#ifdef HAVE_OPENSSL_X25519
+#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_X25519)
     EVP_PKEY_CTX *pctx = NULL;
     EVP_PKEY *pkey = NULL;
     size_t pubkey_len = CURVE25519_PUBKEY_SIZE;
@@ -136,7 +136,7 @@ static int ssh_curve25519_init(ssh_session session)
         crypto_scalarmult_base(session->next_crypto->curve25519_client_pubkey,
                                session->next_crypto->curve25519_privkey);
     }
-#endif /* HAVE_OPENSSL_X25519 */
+#endif /* defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_X25519) */
 
     return SSH_OK;
 }
@@ -176,7 +176,7 @@ static int ssh_curve25519_build_k(ssh_session session)
 {
     ssh_curve25519_pubkey k;
 
-#ifdef HAVE_OPENSSL_X25519
+#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_X25519)
     EVP_PKEY_CTX *pctx = NULL;
     EVP_PKEY *pkey = NULL, *pubkey = NULL;
     size_t shared_key_len = sizeof(k);
@@ -255,7 +255,7 @@ out:
         crypto_scalarmult(k, session->next_crypto->curve25519_privkey,
                           session->next_crypto->curve25519_server_pubkey);
     }
-#endif /* HAVE_OPENSSL_X25519 */
+#endif /* defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_X25519) */
 
     bignum_bin2bn(k, CURVE25519_PUBKEY_SIZE, &session->next_crypto->shared_secret);
     if (session->next_crypto->shared_secret == NULL) {

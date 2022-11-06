@@ -1,5 +1,5 @@
 /*
- * pki_ed25519 .c - PKI infrastructure using ed25519
+ * pki_ed25519.c - PKI infrastructure using ed25519
  *
  * This file is part of the SSH Library
  *

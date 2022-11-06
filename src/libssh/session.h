@@ -23,6 +23,7 @@
 #include <stdbool.h>
 
 #include "libssh/priv.h"
+#include "libssh/callbacks.h"
 #include "libssh/kex.h"
 #include "libssh/packet.h"
 #include "libssh/pcap.h"
@@ -135,6 +136,7 @@ struct ssh_session_struct {
                        the server */
     char *discon_msg; /* disconnect message from
                          the remote host */
+    char *disconnect_message; /* disconnect message to be set */
     ssh_buffer in_buffer;
     PACKET in_packet;
     ssh_buffer out_buffer;
@@ -173,7 +175,7 @@ struct ssh_session_struct {
     struct ssh_crypto_struct *next_crypto;  /* next_crypto is going to be used after a SSH2_MSG_NEWKEYS */
 
     struct ssh_list *channels; /* linked list of channels */
-    int maxchannel;
+    uint32_t maxchannel;
     ssh_agent agent; /* ssh agent */
 
 /* keyb interactive data */
@@ -218,9 +220,10 @@ struct ssh_session_struct {
         char *ProxyCommand;
         char *custombanner;
         char *moduli_file;
+        char *agent_socket;
         unsigned long timeout; /* seconds */
         unsigned long timeout_usec;
-        unsigned int port;
+        uint16_t port;
         socket_t fd;
         int StrictHostKeyChecking;
         char compressionlevel;
@@ -233,6 +236,7 @@ struct ssh_session_struct {
         uint8_t options_seen[SOC_MAX];
         uint64_t rekey_data;
         uint32_t rekey_time;
+        int rsa_min_size;
     } opts;
     /* counters */
     ssh_counter socket_counter;
@@ -247,7 +251,7 @@ struct ssh_session_struct {
 typedef int (*ssh_termination_function)(void *user);
 int ssh_handle_packets(ssh_session session, int timeout);
 int ssh_handle_packets_termination(ssh_session session,
-                                   long timeout,
+                                   int timeout,
                                    ssh_termination_function fct,
                                    void *user);
 void ssh_socket_exception_callback(int code, int errno_code, void *user);

@@ -4,7 +4,7 @@
 // Simple port of examples/samplesshd-kbdint.c over WiFi.  Run with a serial
 // monitor at 115200 BAUD.
 //
-// Copyright (C) 2016–2021 Ewan Parker.
+// Copyright (C) 2016–2022 Ewan Parker.
 
 /* This is a sample implementation of a libssh based SSH server */
 /*
@@ -34,6 +34,8 @@ const char *configSTAPSK = "YourWiFiPSK";
 // Stack size needed to run SSH.
 const unsigned int configSTACK = 10240;
 
+#include "IPv6Address.h"
+#include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
 
@@ -77,8 +79,6 @@ static bool authenticated = false;
 struct _reent reent_data_esp32;
 struct _reent *_impure_ptr = &reent_data_esp32;
 
-#include "IPv6Address.h"
-#include "WiFi.h"
 volatile bool wifiPhyConnected;
 
 // Timing and timeout configuration.

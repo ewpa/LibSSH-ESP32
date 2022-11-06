@@ -5,7 +5,7 @@
 // The example makes an SCP connection to a defined server, pulls the firmware
 // image, and writes it to flash.
 //
-// Copyright (C) 2016–2021 Ewan Parker.
+// Copyright (C) 2016–2022 Ewan Parker.
 
 // EXAMPLE copyright START
 // Some SCP code borrowed shamelessly from libssh example libssh_scp.c
@@ -28,14 +28,14 @@ const unsigned int configSTACKctl = 10240;
 const unsigned int configSTACKota = 32768;
 const int verbosity = 0;
 
+#include "IPv6Address.h"
+#include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
 
 // EXAMPLE includes/defines START
 // EXAMPLE includes/defines FINISH
 
-#include "IPv6Address.h"
-#include "WiFi.h"
 volatile bool wifiPhyConnected;
 
 // Timing and timeout configuration.

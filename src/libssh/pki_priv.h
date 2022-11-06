@@ -49,6 +49,8 @@ enum ssh_key_e {
   SSH_KEY_PRIVATE
 };
 
+void pki_key_clean(ssh_key key);
+
 int pki_key_ecdsa_nid_from_name(const char *name);
 const char *pki_key_ecdsa_nid_to_name(int nid);
 const char *ssh_key_signature_to_char(enum ssh_keytypes_e type,
@@ -165,4 +167,5 @@ ssh_string ssh_pki_openssh_privkey_export(const ssh_key privkey,
 /* URI Function */
 int pki_uri_import(const char *uri_name, ssh_key *key, enum ssh_key_e key_type);
 
+bool ssh_key_size_allowed_rsa(int min_size, ssh_key key);
 #endif /* PKI_PRIV_H_ */

@@ -25,7 +25,7 @@
  * Why a wrapper?
  *
  * Let's say you want to port libssh from libcrypto of openssl to libfoo
- * you are going to spend hours to remove every references to SHA1_Update()
+ * you are going to spend hours removing every reference to SHA1_Update()
  * to libfoo_sha1_update after the work is finished, you're going to have
  * only this file to modify it's not needed to say that your modifications
  * are welcome.
@@ -108,7 +108,7 @@ const char *ssh_hmac_type_to_string(enum ssh_hmac_e hmac_type, bool etm)
 }
 
 /* it allocates a new cipher structure based on its offset into the global table */
-static struct ssh_cipher_struct *cipher_new(int offset) {
+static struct ssh_cipher_struct *cipher_new(uint8_t offset) {
   struct ssh_cipher_struct *cipher = NULL;
 
   cipher = malloc(sizeof(struct ssh_cipher_struct));
@@ -178,7 +178,15 @@ void crypto_free(struct ssh_crypto_struct *crypto)
     SAFE_FREE(crypto->ecdh_server_pubkey);
     if(crypto->ecdh_privkey != NULL){
 #ifdef HAVE_OPENSSL_ECC
+/* TODO Change to new API when the OpenSSL will support export of uncompressed EC keys
+ * https://github.com/openssl/openssl/pull/16624
+ * #if OPENSSL_VERSION_NUMBER < 0x30000000L
+ */
+#if 1
         EC_KEY_free(crypto->ecdh_privkey);
+#else
+        EVP_PKEY_free(crypto->ecdh_privkey);
+#endif /* OPENSSL_VERSION_NUMBER */
 #elif defined HAVE_GCRYPT_ECC
         gcry_sexp_release(crypto->ecdh_privkey);
 #endif
@@ -239,7 +247,7 @@ static int crypt_set_algorithms2(ssh_session session)
     const char *wanted = NULL;
     struct ssh_cipher_struct *ssh_ciphertab=ssh_get_ciphertab();
     struct ssh_hmac_struct *ssh_hmactab=ssh_get_hmactab();
-    size_t i = 0;
+    uint8_t i = 0;
     int cmp;
 
     /*
@@ -388,7 +396,7 @@ int crypt_set_algorithms_client(ssh_session session)
 #ifdef WITH_SERVER
 int crypt_set_algorithms_server(ssh_session session){
     const char *method = NULL;
-    size_t i = 0;
+    uint8_t i = 0;
     struct ssh_cipher_struct *ssh_ciphertab=ssh_get_ciphertab();
     struct ssh_hmac_struct   *ssh_hmactab=ssh_get_hmactab();
     int cmp;

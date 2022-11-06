@@ -67,7 +67,7 @@ int ssh_packet_send_unimplemented(ssh_session session, uint32_t seqnum);
 int ssh_packet_parse_type(ssh_session session);
 //int packet_flush(ssh_session session, int enforce_blocking);
 
-int ssh_packet_socket_callback(const void *data, size_t len, void *user);
+size_t ssh_packet_socket_callback(const void *data, size_t len, void *user);
 void ssh_packet_register_socket_callback(ssh_session session, struct ssh_socket_struct *s);
 void ssh_packet_set_callbacks(ssh_session session, ssh_packet_callbacks callbacks);
 void ssh_packet_remove_callbacks(ssh_session session, ssh_packet_callbacks callbacks);
@@ -80,7 +80,7 @@ int ssh_packet_decrypt(ssh_session session, uint8_t *destination, uint8_t *sourc
         size_t start, size_t encrypted_size);
 unsigned char *ssh_packet_encrypt(ssh_session session,
                                   void *packet,
-                                  uint32_t len);
+                                  size_t len);
 int ssh_packet_hmac_verify(ssh_session session, const void *data, size_t len,
                            unsigned char *mac, enum ssh_hmac_e type);
 int ssh_packet_set_newkeys(ssh_session session,

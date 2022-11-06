@@ -110,6 +110,8 @@ typedef BN_CTX* bignum_CTX;
 /* Returns true if the OpenSSL is operating in FIPS mode */
 #ifdef HAVE_OPENSSL_FIPS_MODE
 #define ssh_fips_mode() (FIPS_mode() != 0)
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define ssh_fips_mode() EVP_default_properties_is_fips_enabled(NULL)
 #else
 #define ssh_fips_mode() false
 #endif

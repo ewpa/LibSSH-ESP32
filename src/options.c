@@ -32,6 +32,7 @@
 #include <winsock2.h>
 #endif
 #include <sys/types.h>
+#include "libssh/pki_priv.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
 #include "libssh/misc.h"
@@ -56,11 +57,12 @@
  * @param src           The session to use to copy the options.
  *
  * @param dest          A pointer to store the allocated session with duplicated
- *                      options. You have to free the memory.
+ *                      options. You have to free the memory using ssh_free()
  *
- * @returns             0 on sucess, -1 on error with errno set.
+ * @returns             0 on success, -1 on error with errno set.
  *
  * @see ssh_session_connect()
+ * @see ssh_free()
  */
 int ssh_options_copy(ssh_session src, ssh_session *dest)
 {
@@ -263,9 +265,10 @@ int ssh_options_set_algo(ssh_session session,
  *                The file descriptor to use (socket_t).\n
  *                \n
  *                If you wish to open the socket yourself for a reason
- *                or another, set the file descriptor. Don't forget to
- *                set the hostname as the hostname is used as a key in
- *                the known_host mechanism.
+ *                or another, set the file descriptor and take care of closing
+ *                it (this is new behavior in libssh 0.10).
+ *                Don't forget to set the hostname as the hostname is used
+ *                as a key in the known_host mechanism.
  *
  *              - SSH_OPTIONS_BINDADDR:
  *                The address to bind the client to (const char *).
@@ -340,7 +343,7 @@ int ssh_options_set_algo(ssh_session session,
  *                - SSH_LOG_NOLOG: No logging
  *                - SSH_LOG_WARNING: Only warnings
  *                - SSH_LOG_PROTOCOL: High level protocol information
- *                - SSH_LOG_PACKET: Lower level protocol infomations, packet level
+ *                - SSH_LOG_PACKET: Lower level protocol information, packet level
  *                - SSH_LOG_FUNCTIONS: Every function path
  *
  *              - SSH_OPTIONS_LOG_VERBOSITY_STR:
@@ -465,6 +468,20 @@ int ssh_options_set_algo(ssh_session session,
  *                in seconds. RFC 4253 Section 9 recommends one hour.
  *                (uint32_t, 0=off)
  *
+ *              - SSH_OPTIONS_RSA_MIN_SIZE
+ *                Set the minimum RSA key size in bits to be accepted by the
+ *                client for both authentication and hostkey verification.
+ *                The values under 768 bits are not accepted even with this
+ *                configuration option as they are considered completely broken.
+ *                Setting 0 will revert the value to defaults.
+ *                Default is 1024 bits or 2048 bits in FIPS mode.
+ *                (int *)
+
+ *              - SSH_OPTIONS_IDENTITY_AGENT
+ *                Set the path to the SSH agent socket. If unset, the
+ *                SSH_AUTH_SOCK environment is consulted.
+ *                (const char *)
+ *
  * @param  value The value to set. This is a generic pointer and the
  *               datatype which is used should be set according to the
  *               type set.
@@ -472,7 +489,8 @@ int ssh_options_set_algo(ssh_session session,
  * @return       0 on success, < 0 on error.
  */
 int ssh_options_set(ssh_session session, enum ssh_options_e type,
-    const void *value) {
+                    const void *value)
+{
     const char *v;
     char *p, *q;
     long int i;
@@ -495,7 +513,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                     ssh_set_error_oom(session);
                     return -1;
                 }
-                p = strchr(q, '@');
+                p = strrchr(q, '@');
 
                 SAFE_FREE(session->opts.host);
 
@@ -844,10 +862,10 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 if (strcasecmp(value,"yes")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"zlib@openssh.com,zlib") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"zlib@openssh.com,zlib,none") < 0)
                         return -1;
                 } else if (strcasecmp(value,"no")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"none") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"none,zlib@openssh.com,zlib") < 0)
                         return -1;
                 } else {
                     if (ssh_options_set_algo(session, SSH_COMP_C_S, v) < 0)
@@ -862,10 +880,10 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 if (strcasecmp(value,"yes")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"zlib@openssh.com,zlib") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"zlib@openssh.com,zlib,none") < 0)
                         return -1;
                 } else if (strcasecmp(value,"no")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"none") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"none,zlib@openssh.com,zlib") < 0)
                         return -1;
                 } else {
                     if (ssh_options_set_algo(session, SSH_COMP_S_C, v) < 0)
@@ -906,7 +924,6 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
 
                 session->opts.StrictHostKeyChecking = (*x & 0xff) > 0 ? 1 : 0;
             }
-            session->opts.StrictHostKeyChecking = *(int*)value;
             break;
         case SSH_OPTIONS_PROXYCOMMAND:
             v = value;
@@ -1029,6 +1046,37 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 session->opts.rekey_time = (*x) * 1000;
             }
             break;
+        case SSH_OPTIONS_RSA_MIN_SIZE:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                int *x = (int *)value;
+                if (*x > 0 && *x < 768) {
+                    ssh_set_error(session, SSH_REQUEST_DENIED,
+                                  "The provided value (%u) for minimal RSA key "
+                                  "size is too small. Use at least 768 bits.", *x);
+                    return -1;
+                }
+                session->opts.rsa_min_size = *x;
+            }
+            break;
+        case SSH_OPTIONS_IDENTITY_AGENT:
+            v = value;
+            SAFE_FREE(session->opts.agent_socket);
+            if (v == NULL) {
+                /* The default value will be set by the ssh_options_apply() */
+            } else if (v[0] == '\0') {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                session->opts.agent_socket = ssh_path_expand_tilde(v);
+                if (session->opts.agent_socket == NULL) {
+                    ssh_set_error_oom(session);
+                    return -1;
+                }
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -1070,7 +1118,7 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
 /**
  * @brief This function can get ssh options, it does not support all options provided for
  *        ssh options set, but mostly those which a user-space program may care about having
- *        trusted the ssh driver to infer these values from underlaying configuration files.
+ *        trusted the ssh driver to infer these values from underlying configuration files.
  *        It operates only on those SSH_OPTIONS_* which return char*. If you wish to receive
  *        the port then please use ssh_options_get_port() which returns an unsigned int.
  *
@@ -1175,10 +1223,10 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
  * This is a helper for your application to generate the appropriate
  * options from the command line arguments.\n
  * The argv array and argc value are changed so that the parsed
- * arguments wont appear anymore in them.\n
+ * arguments won't appear anymore in them.\n
  * The single arguments (without switches) are not parsed. thus,
  * myssh -l user localhost\n
- * The command wont set the hostname value of options to localhost.
+ * The command won't set the hostname value of options to localhost.
  *
  * @param session       The session to configure.
  *
@@ -1375,13 +1423,14 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
  * @param  session      SSH session handle
  *
  * @param  filename     The options file to use, if NULL the default
- *                      ~/.ssh/config will be used.
+ *                      ~/.ssh/config and /etc/ssh/ssh_config will be used.
  *
  * @return 0 on success, < 0 on error.
  *
  * @see ssh_options_set()
  */
-int ssh_options_parse_config(ssh_session session, const char *filename) {
+int ssh_options_parse_config(ssh_session session, const char *filename)
+{
   char *expanded_filename;
   int r;
 
@@ -1426,7 +1475,8 @@ out:
   return r;
 }
 
-int ssh_options_apply(ssh_session session) {
+int ssh_options_apply(ssh_session session)
+{
     struct ssh_iterator *it;
     char *tmp;
     int rc;
@@ -1468,7 +1518,23 @@ int ssh_options_apply(ssh_session session) {
     session->opts.global_knownhosts = tmp;
 
     if (session->opts.ProxyCommand != NULL) {
-        tmp = ssh_path_expand_escape(session, session->opts.ProxyCommand);
+        char *p = NULL;
+        size_t plen = strlen(session->opts.ProxyCommand) +
+                      5 /* strlen("exec ") */;
+
+        p = malloc(plen + 1 /* \0 */);
+        if (p == NULL) {
+            return -1;
+        }
+
+        rc = snprintf(p, plen + 1, "exec %s", session->opts.ProxyCommand);
+        if ((size_t)rc != plen) {
+            free(p);
+            return -1;
+        }
+
+        tmp = ssh_path_expand_escape(session, p);
+        free(p);
         if (tmp == NULL) {
             return -1;
         }
@@ -1501,12 +1567,27 @@ int ssh_options_apply(ssh_session session) {
 /** @} */
 
 #ifdef WITH_SERVER
+static bool ssh_bind_key_size_allowed(ssh_bind sshbind, ssh_key key)
+{
+    int min_size = 0;
+
+    switch (ssh_key_type(key)) {
+    case SSH_KEYTYPE_RSA:
+    case SSH_KEYTYPE_RSA_CERT01:
+        min_size = sshbind->rsa_min_size;
+        return ssh_key_size_allowed_rsa(min_size, key);
+    default:
+        return true;
+    }
+}
+
 /**
  * @addtogroup libssh_server
  * @{
  */
-static int ssh_bind_set_key(ssh_bind sshbind, char **key_loc,
-                            const void *value) {
+static int
+ssh_bind_set_key(ssh_bind sshbind, char **key_loc, const void *value)
+{
     if (value == NULL) {
         ssh_set_error_invalid(sshbind);
         return -1;
@@ -1555,7 +1636,7 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *
  *                      - SSH_BIND_OPTIONS_HOSTKEY:
  *                        Set the path to an ssh host key, regardless
- *                        of type.  Only one key from per key type
+ *                        of type.  Only one key from each key type
  *                        (RSA, DSA, ECDSA) is allowed in an ssh_bind
  *                        at a time, and later calls to this function
  *                        with this option for the same key type will
@@ -1580,7 +1661,7 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                        - SSH_LOG_NOLOG: No logging
  *                        - SSH_LOG_WARNING: Only warnings
  *                        - SSH_LOG_PROTOCOL: High level protocol information
- *                        - SSH_LOG_PACKET: Lower level protocol infomations, packet level
+ *                        - SSH_LOG_PACKET: Lower level protocol information, packet level
  *                        - SSH_LOG_FUNCTIONS: Every function path
  *
  *                      - SSH_BIND_OPTIONS_LOG_VERBOSITY_STR:
@@ -1655,10 +1736,21 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                        possible algorithms is created from the list of keys
  *                        set and then filtered against this list.
  *                        (const char *, comma-separated list).
- * 
+ *
  *                      - SSH_BIND_OPTIONS_MODULI
  *                        Set the path to the moduli file. Defaults to
  *                        /etc/ssh/moduli if not specified (const char *).
+ *
+ *                      - SSH_BIND_OPTIONS_RSA_MIN_SIZE
+ *                        Set the minimum RSA key size in bits to be accepted by
+ *                        the server for both authentication and hostkey
+ *                        operations. The values under 768 bits are not accepted
+ *                        even with this configuration option as they are
+ *                        considered completely broken. Setting 0 will revert
+ *                        the value to defaults.
+ *                        Default is 1024 bits or 2048 bits in FIPS mode.
+ *                        (int)
+ *
  *
  * @param  value        The value to set. This is a generic pointer and the
  *                      datatype which should be used is described at the
@@ -1669,6 +1761,7 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
 int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
     const void *value)
 {
+  bool allowed;
   char *p, *q;
   const char *v;
   int i, rc;
@@ -1692,6 +1785,16 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
           if (rc != SSH_OK) {
               return -1;
           }
+          allowed = ssh_bind_key_size_allowed(sshbind, key);
+          if (!allowed) {
+              ssh_set_error(sshbind,
+                            SSH_FATAL,
+                            "The host key size %d is too small.",
+                            ssh_key_size(key));
+              ssh_key_free(key);
+              return -1;
+          }
+
           key_type = ssh_key_type(key);
           switch (key_type) {
           case SSH_KEYTYPE_DSS:
@@ -1700,9 +1803,9 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
               bind_key_path_loc = &sshbind->dsakey;
 #else
               ssh_set_error(sshbind,
-                      SSH_FATAL,
-                      "DSS key used and libssh compiled "
-                      "without DSA support");
+                            SSH_FATAL,
+                            "DSS key used and libssh compiled "
+                            "without DSA support");
 #endif
               break;
           case SSH_KEYTYPE_ECDSA_P256:
@@ -1723,9 +1826,9 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
               bind_key_path_loc = &sshbind->rsakey;
               break;
           case SSH_KEYTYPE_ED25519:
-		  bind_key_loc = &sshbind->ed25519;
-		  bind_key_path_loc = &sshbind->ed25519key;
-		  break;
+              bind_key_loc = &sshbind->ed25519;
+              bind_key_path_loc = &sshbind->ed25519key;
+              break;
           default:
               ssh_set_error(sshbind,
                             SSH_FATAL,
@@ -1756,6 +1859,15 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
             int key_type;
             ssh_key *bind_key_loc = NULL;
             ssh_key key = (ssh_key)value;
+
+            allowed = ssh_bind_key_size_allowed(sshbind, key);
+            if (!allowed) {
+                ssh_set_error(sshbind,
+                              SSH_FATAL,
+                              "The host key size %d is too small.",
+                              ssh_key_size(key));
+                return -1;
+            }
 
             key_type = ssh_key_type(key);
             switch (key_type) {
@@ -2020,6 +2132,21 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
             }
         }
         break;
+    case SSH_BIND_OPTIONS_RSA_MIN_SIZE:
+        if (value == NULL) {
+            ssh_set_error_invalid(sshbind);
+            return -1;
+        } else {
+            int *x = (int *)value;
+            if (*x > 0 && *x < 768) {
+                ssh_set_error(sshbind, SSH_REQUEST_DENIED,
+                              "The provided value (%u) for minimal RSA key "
+                              "size is too small. Use at least 768 bits.", *x);
+                return -1;
+            }
+            sshbind->rsa_min_size = *x;
+        }
+        break;
     default:
       ssh_set_error(sshbind, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
       return -1;
@@ -2132,7 +2259,7 @@ static char *ssh_bind_options_expand_escape(ssh_bind sshbind, const char *s)
  * @param  sshbind      SSH bind handle
  *
  * @param  filename     The options file to use; if NULL only the global
- *                      configuration is parsed and applied (if it haven't been
+ *                      configuration is parsed and applied (if it hasn't been
  *                      processed before).
  *
  * @return 0 on success, < 0 on error.

@@ -103,7 +103,7 @@ int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
  * @return              The newly allocated string, NULL on error with errno
  *                      set.
  *
- * @note The nul byte is not copied nor counted in the ouput string.
+ * @note The null byte is not copied nor counted in the output string.
  */
 struct ssh_string_struct *ssh_string_from_char(const char *what) {
   struct ssh_string_struct *ptr;
@@ -129,7 +129,7 @@ struct ssh_string_struct *ssh_string_from_char(const char *what) {
 /**
  * @brief Return the size of a SSH string.
  *
- * @param[in] s         The the input SSH string.
+ * @param[in] s         The input SSH string.
  *
  * @return The size of the content of the string, 0 on error.
  */
@@ -149,7 +149,7 @@ size_t ssh_string_len(struct ssh_string_struct *s) {
 }
 
 /**
- * @brief Get the the string as a C nul-terminated string.
+ * @brief Get the string as a C null-terminated string.
  *
  * This is only available as long as the SSH string exists.
  *
@@ -168,7 +168,7 @@ const char *ssh_string_get_char(struct ssh_string_struct *s)
 }
 
 /**
- * @brief Convert a SSH string to a C nul-terminated string.
+ * @brief Convert a SSH string to a C null-terminated string.
  *
  * @param[in] s         The SSH input string.
  *

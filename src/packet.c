@@ -113,7 +113,7 @@ static ssh_packet_callback default_packet_handlers[]= {
   ssh_packet_global_request,               // SSH2_MSG_GLOBAL_REQUEST             80
 #else /* WITH_SERVER */
   NULL,
-#endif /* WITH_SERVER */ 
+#endif /* WITH_SERVER */
   ssh_request_success,                     // SSH2_MSG_REQUEST_SUCCESS            81
   ssh_request_denied,                      // SSH2_MSG_REQUEST_FAILURE            82
   NULL, NULL, NULL, NULL, NULL, NULL, NULL,//                                     83-89
@@ -363,7 +363,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * Transitions:
          * - session->dh_handshake_state = DH_STATE_INIT_SENT
          * then calls dh_handshake_server which triggers:
-         * - session->dh_handhsake_state = DH_STATE_NEWKEYS_SENT
+         * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
          * */
 
         if (session->session_state != SSH_SESSION_STATE_DH) {
@@ -391,7 +391,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          *   or dh_handshake_state == DH_STATE_REQUEST_SENT (dh-gex)
          *
          * Transitions:
-         * - session->dh_handhsake_state = DH_STATE_NEWKEYS_SENT
+         * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
          * */
 
         if (session->session_state != SSH_SESSION_STATE_DH) {
@@ -425,7 +425,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATING
-         * - dh_hanshake_state == DH_STATE_FINISHED
+         * - dh_handshake_state == DH_STATE_FINISHED
          *
          * Transitions:
          * - if authentication was successful:
@@ -454,7 +454,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATING
-         * - dh_hanshake_state == DH_STATE_FINISHED
+         * - dh_handshake_state == DH_STATE_FINISHED
          * - session->auth.state == SSH_AUTH_STATE_KBDINT_SENT
          *   or session->auth.state == SSH_AUTH_STATE_PUBKEY_OFFER_SENT
          *   or session->auth.state == SSH_AUTH_STATE_PUBKEY_AUTH_SENT
@@ -492,7 +492,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATING
-         * - dh_hanshake_state == DH_STATE_FINISHED
+         * - dh_handshake_state == DH_STATE_FINISHED
          * - session->auth.state == SSH_AUTH_STATE_KBDINT_SENT
          *   or session->auth.state == SSH_AUTH_STATE_PUBKEY_AUTH_SENT
          *   or session->auth.state == SSH_AUTH_STATE_PASSWORD_AUTH_SENT
@@ -1054,14 +1054,14 @@ static bool ssh_packet_need_rekey(ssh_session session,
  * @len length of data received. It might not be enough for a complete packet
  * @returns number of bytes read and processed.
  */
-int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
+size_t ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
 {
     ssh_session session = (ssh_session)user;
     uint32_t blocksize = 8;
     uint32_t lenfield_blocksize = 8;
     size_t current_macsize = 0;
     uint8_t *ptr = NULL;
-    int to_be_read;
+    long to_be_read;
     int rc;
     uint8_t *cleartext_packet = NULL;
     uint8_t *packet_second_block = NULL;
@@ -1069,7 +1069,7 @@ int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
     size_t packet_remaining;
     uint32_t packet_len, compsize, payloadsize;
     uint8_t padding;
-    size_t processed = 0; /* number of byte processed from the callback */
+    size_t processed = 0; /* number of bytes processed from the callback */
     enum ssh_packet_filter_result_e filter_result;
     struct ssh_crypto_struct *crypto = NULL;
     bool etm = false;
@@ -1169,7 +1169,7 @@ int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                 /* remote sshd sends invalid sizes? */
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "Given numbers of bytes left to be read < 0 (%d)!",
+                              "Given numbers of bytes left to be read < 0 (%ld)!",
                               to_be_read);
                 goto error;
             }
@@ -1183,11 +1183,11 @@ int ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             to_be_read = packet_len + sizeof(uint32_t) + current_macsize;
             /* if to_be_read is zero, the whole packet was blocksize bytes. */
             if (to_be_read != 0) {
-                if (receivedlen  < (unsigned int)to_be_read) {
+                if (receivedlen  < (unsigned long)to_be_read) {
                     /* give up, not enough data in buffer */
                     SSH_LOG(SSH_LOG_PACKET,
                             "packet: partial packet (read len) "
-                            "[len=%d, receivedlen=%d, to_be_read=%d]",
+                            "[len=%d, receivedlen=%d, to_be_read=%ld]",
                             packet_len,
                             (int)receivedlen,
                             to_be_read);

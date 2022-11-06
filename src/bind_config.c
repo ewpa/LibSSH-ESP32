@@ -189,17 +189,28 @@ ssh_bind_config_parse_line(ssh_bind bind,
                            const char *line,
                            unsigned int count,
                            uint32_t *parser_flags,
-                           uint8_t *seen);
+                           uint8_t *seen,
+                           unsigned int depth);
 
-static void local_parse_file(ssh_bind bind,
-                             const char *filename,
-                             uint32_t *parser_flags,
-                             uint8_t *seen)
+#define LIBSSH_BIND_CONF_MAX_DEPTH 16
+static void
+local_parse_file(ssh_bind bind,
+                 const char *filename,
+                 uint32_t *parser_flags,
+                 uint8_t *seen,
+                 unsigned int depth)
 {
     FILE *f;
     char line[MAX_LINE_SIZE] = {0};
     unsigned int count = 0;
     int rv;
+
+    if (depth > LIBSSH_BIND_CONF_MAX_DEPTH) {
+        ssh_set_error(bind, SSH_FATAL,
+                      "ERROR - Too many levels of configuration includes "
+                      "when processing file '%s'", filename);
+        return;
+    }
 
     f = fopen(filename, "r");
     if (f == NULL) {
@@ -213,7 +224,7 @@ static void local_parse_file(ssh_bind bind,
 
     while (fgets(line, sizeof(line), f)) {
         count++;
-        rv = ssh_bind_config_parse_line(bind, line, count, parser_flags, seen);
+        rv = ssh_bind_config_parse_line(bind, line, count, parser_flags, seen, depth);
         if (rv < 0) {
             fclose(f);
             return;
@@ -228,7 +239,8 @@ static void local_parse_file(ssh_bind bind,
 static void local_parse_glob(ssh_bind bind,
                              const char *fileglob,
                              uint32_t *parser_flags,
-                             uint8_t *seen)
+                             uint8_t *seen,
+                             unsigned int depth)
 {
     glob_t globbuf = {
         .gl_flags = 0,
@@ -248,7 +260,7 @@ static void local_parse_glob(ssh_bind bind,
     }
 
     for (i = 0; i < globbuf.gl_pathc; i++) {
-        local_parse_file(bind, globbuf.gl_pathv[i], parser_flags, seen);
+        local_parse_file(bind, globbuf.gl_pathv[i], parser_flags, seen, depth);
     }
 
     globfree(&globbuf);
@@ -274,7 +286,8 @@ ssh_bind_config_parse_line(ssh_bind bind,
                            const char *line,
                            unsigned int count,
                            uint32_t *parser_flags,
-                           uint8_t *seen)
+                           uint8_t *seen,
+                           unsigned int depth)
 {
     enum ssh_bind_config_opcode_e opcode;
     const char *p = NULL;
@@ -288,7 +301,12 @@ ssh_bind_config_parse_line(ssh_bind bind,
         return -1;
     }
 
-    if ((line == NULL) || (parser_flags == NULL)) {
+    /* Ignore empty lines */
+    if (line == NULL || *line == '\0') {
+        return 0;
+    }
+
+    if (parser_flags == NULL) {
         ssh_set_error_invalid(bind);
         return -1;
     }
@@ -333,9 +351,9 @@ ssh_bind_config_parse_line(ssh_bind bind,
         p = ssh_config_get_str_tok(&s, NULL);
         if (p && (*parser_flags & PARSING)) {
 #if defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER)
-            local_parse_glob(bind, p, parser_flags, seen);
+            local_parse_glob(bind, p, parser_flags, seen, depth + 1);
 #else
-            local_parse_file(bind, p, parser_flags, seen);
+            local_parse_file(bind, p, parser_flags, seen, depth + 1);
 #endif /* HAVE_GLOB */
         }
         break;
@@ -628,7 +646,7 @@ int ssh_bind_config_parse_file(ssh_bind bind, const char *filename)
     parser_flags = PARSING;
     while (fgets(line, sizeof(line), f)) {
         count++;
-        rv = ssh_bind_config_parse_line(bind, line, count, &parser_flags, seen);
+        rv = ssh_bind_config_parse_line(bind, line, count, &parser_flags, seen, 0);
         if (rv) {
             fclose(f);
             return -1;
@@ -637,4 +655,65 @@ int ssh_bind_config_parse_file(ssh_bind bind, const char *filename)
 
     fclose(f);
     return 0;
+}
+
+/* @brief Parse configuration string and set the options to the given bind session
+ *
+ * @params[in] bind      The ssh bind session
+ * @params[in] input     Null terminated string containing the configuration
+ *
+ * @returns    SSH_OK on successful parsing the configuration string,
+ *             SSH_ERROR on error
+ */
+int ssh_bind_config_parse_string(ssh_bind bind, const char *input)
+{
+    char line[MAX_LINE_SIZE] = {0};
+    const char *c = input, *line_start = input;
+    unsigned int line_num = 0, line_len;
+    uint32_t parser_flags;
+    int rv;
+
+    /* This local table is used during the parsing of the current file (and
+     * files included recursively in this file) to prevent an option to be
+     * redefined, i.e. the first value set is kept. But this DO NOT prevent the
+     * option to be redefined later by another file. */
+    uint8_t seen[BIND_CFG_MAX] = {0};
+
+    SSH_LOG(SSH_LOG_DEBUG, "Reading bind configuration data from string:");
+    SSH_LOG(SSH_LOG_DEBUG, "START\n%s\nEND", input);
+
+    parser_flags = PARSING;
+    while (1) {
+        line_num++;
+        line_start = c;
+        c = strchr(line_start, '\n');
+        if (c == NULL) {
+            /* if there is no newline at the end of the string */
+            c = strchr(line_start, '\0');
+        }
+        if (c == NULL) {
+            /* should not happen, would mean a string without trailing '\0' */
+            SSH_LOG(SSH_LOG_WARN, "No trailing '\\0' in config string");
+            return SSH_ERROR;
+        }
+        line_len = c - line_start;
+        if (line_len > MAX_LINE_SIZE - 1) {
+            SSH_LOG(SSH_LOG_WARN, "Line %u too long: %u characters",
+                    line_num, line_len);
+            return SSH_ERROR;
+        }
+        memcpy(line, line_start, line_len);
+        line[line_len] = '\0';
+        SSH_LOG(SSH_LOG_DEBUG, "Line %u: %s", line_num, line);
+        rv = ssh_bind_config_parse_line(bind, line, line_num, &parser_flags, seen, 0);
+        if (rv < 0) {
+            return SSH_ERROR;
+        }
+        if (*c == '\0') {
+            break;
+        }
+        c++;
+    }
+
+    return SSH_OK;
 }

@@ -34,14 +34,24 @@ struct dh_ctx;
 int ssh_dh_init_common(struct ssh_crypto_struct *crypto);
 void ssh_dh_cleanup(struct ssh_crypto_struct *crypto);
 
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
 int ssh_dh_get_parameters(struct dh_ctx *ctx,
                           const_bignum *modulus, const_bignum *generator);
+#else
+int ssh_dh_get_parameters(struct dh_ctx *ctx,
+                          bignum *modulus, bignum *generator);
+#endif /* OPENSSL_VERSION_NUMBER */
 int ssh_dh_set_parameters(struct dh_ctx *ctx,
                           const bignum modulus, const bignum generator);
 
 int ssh_dh_keypair_gen_keys(struct dh_ctx *ctx, int peer);
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
 int ssh_dh_keypair_get_keys(struct dh_ctx *ctx, int peer,
                             const_bignum *priv, const_bignum *pub);
+#else
+int ssh_dh_keypair_get_keys(struct dh_ctx *ctx, int peer,
+                            bignum *priv, bignum *pub);
+#endif /* OPENSSL_VERSION_NUMBER */
 int ssh_dh_keypair_set_keys(struct dh_ctx *ctx, int peer,
                             const bignum priv, const bignum pub);
 

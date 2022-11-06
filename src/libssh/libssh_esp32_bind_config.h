@@ -61,4 +61,14 @@ enum ssh_bind_config_opcode_e {
  */
 int ssh_bind_config_parse_file(ssh_bind sshbind, const char *filename);
 
+/* @brief Parse configuration string and set the options to the given bind session
+ *
+ * @params[in] bind      The ssh bind session
+ * @params[in] input     Null terminated string containing the configuration
+ *
+ * @returns    SSH_OK on successful parsing the configuration string,
+ *             SSH_ERROR on error
+ */
+int ssh_bind_config_parse_string(ssh_bind bind, const char *input);
+
 #endif /* BIND_CONFIG_H_ */

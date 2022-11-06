@@ -81,7 +81,7 @@ const void *_ssh_list_pop_head(struct ssh_list *list);
 #define ssh_list_pop_head(type, ssh_list)\
   ((type)_ssh_list_pop_head(ssh_list))
 
-int ssh_make_milliseconds(long sec, long usec);
+int ssh_make_milliseconds(unsigned long sec, unsigned long usec);
 void ssh_timestamp_init(struct ssh_timestamp *ts);
 int ssh_timeout_elapsed(struct ssh_timestamp *ts, int timeout);
 int ssh_timeout_update(struct ssh_timestamp *ts, int timeout);

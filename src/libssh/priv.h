@@ -160,7 +160,9 @@ char *strndup(const char *s, size_t n);
 # endif /* _MSC_VER */
 
 struct timeval;
-int gettimeofday(struct timeval *__p, void *__t);
+int ssh_gettimeofday(struct timeval *__p, void *__t);
+
+#define gettimeofday ssh_gettimeofday
 
 #define _XCLOSESOCKET closesocket
 
@@ -309,7 +311,7 @@ int decompress_buffer(ssh_session session,ssh_buffer buf, size_t maxlen);
 
 /* match.c */
 int match_pattern_list(const char *string, const char *pattern,
-    unsigned int len, int dolower);
+    size_t len, int dolower);
 int match_hostname(const char *host, const char *pattern, unsigned int len);
 
 /* connector.c */
@@ -438,5 +440,8 @@ void explicit_bzero(void *s, size_t n);
 void ssh_agent_state_free(void *data);
 
 bool is_ssh_initialized(void);
+
+#define SSH_ERRNO_MSG_MAX   1024
+char *ssh_strerror(int err_num, char *buf, size_t buflen);
 
 #endif /* _LIBSSH_PRIV_H */

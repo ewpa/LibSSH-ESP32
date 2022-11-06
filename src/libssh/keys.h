@@ -32,8 +32,12 @@ struct ssh_public_key_struct {
     gcry_sexp_t dsa_pub;
     gcry_sexp_t rsa_pub;
 #elif defined(HAVE_LIBCRYPTO)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     DSA *dsa_pub;
     RSA *rsa_pub;
+#else /* OPENSSL_VERSION_NUMBER */
+    EVP_PKEY *key_pub;
+#endif
 #elif defined(HAVE_LIBMBEDCRYPTO)
     mbedtls_pk_context *rsa_pub;
     void *dsa_pub;
@@ -46,8 +50,12 @@ struct ssh_private_key_struct {
     gcry_sexp_t dsa_priv;
     gcry_sexp_t rsa_priv;
 #elif defined(HAVE_LIBCRYPTO)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     DSA *dsa_priv;
     RSA *rsa_priv;
+#else
+    EVP_PKEY *key_priv;
+#endif /* OPENSSL_VERSION_NUMBER */
 #elif defined(HAVE_LIBMBEDCRYPTO)
     mbedtls_pk_context *rsa_priv;
     void *dsa_priv;
