@@ -683,8 +683,6 @@ void otaTask(void *pvParameter)
 
 esp_err_t event_cb(void *ctx, system_event_t *event)
 {
-  tcpip_adapter_dns_info_t dns;
-
   switch(event->event_id)
   {
     case SYSTEM_EVENT_STA_START:
