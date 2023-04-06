@@ -42,17 +42,28 @@ void setup() {
 
 	DPRINT( "IP Address: " );
 	DPRINTLN( WiFi.localIP() );
+
+	// Stack size needs to be larger, so continue in a new task.
+	xTaskCreatePinnedToCore(controlTask, "ctl", 51200, NULL,
+		(tskIDLE_PRIORITY + 3), NULL, portNUM_PROCESSORS - 1);
+
+}
+
+void controlTask(void *pvParameter) {
+	while (true) {
+#if DEBUG
+		if ( Serial.available() > 0 ) {
+			serialParse();
+		}
+#endif
+
+		delay( 10 );
+	}
 }
 
 void loop() {
-
-#if DEBUG
-	if ( Serial.available() > 0 ) {
-		serialParse();
-	}
-#endif
-
-	delay( 10 );
+	// Nothing to do here since controlTask has taken over.
+	vTaskDelay(60000 / portTICK_PERIOD_MS);
 }
 
 void serialParse( void ) {
