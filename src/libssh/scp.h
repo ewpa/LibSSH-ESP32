@@ -47,9 +47,17 @@ struct ssh_scp_struct {
   int request_mode;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ssh_scp_read_string(ssh_scp scp, char *buffer, size_t len);
 int ssh_scp_integer_mode(const char *mode);
 char *ssh_scp_string_mode(int mode);
 int ssh_scp_response(ssh_scp scp, char **response);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

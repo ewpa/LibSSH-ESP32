@@ -70,6 +70,10 @@
 #define SSH_AGENT_RSA_SHA2_256                   0x02
 #define SSH_AGENT_RSA_SHA2_512                   0x04
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ssh_agent_struct {
   struct ssh_socket_struct *sock;
   ssh_buffer ident;
@@ -114,5 +118,9 @@ ssh_key ssh_agent_get_first_ident(struct ssh_session_struct *session,
 ssh_string ssh_agent_sign_data(ssh_session session,
                                const ssh_key pubkey,
                                struct ssh_buffer_struct *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __AGENT_H */

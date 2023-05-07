@@ -991,7 +991,7 @@ int ssh_scp_accept_request(ssh_scp scp)
  *
  * @param[in]  size     The size of the buffer.
  *
- * @returns             The nNumber of bytes read, SSH_ERROR if an error occurred
+ * @returns             The number of bytes read, SSH_ERROR if an error occurred
  *                      while reading.
  */
 int ssh_scp_read(ssh_scp scp, void *buffer, size_t size)

@@ -28,6 +28,10 @@
 
 #include "libssh/server.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum ssh_bind_config_opcode_e {
     /* Known but not allowed in Match block */
     BIND_CFG_NOT_ALLOWED_IN_MATCH = -4,
@@ -70,5 +74,9 @@ int ssh_bind_config_parse_file(ssh_bind sshbind, const char *filename);
  *             SSH_ERROR on error
  */
 int ssh_bind_config_parse_string(ssh_bind bind, const char *input);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BIND_CONFIG_H_ */

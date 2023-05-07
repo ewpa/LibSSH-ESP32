@@ -29,6 +29,10 @@
 
 typedef struct ssh_gssapi_struct *ssh_gssapi;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef WITH_SERVER
 int ssh_gssapi_handle_userauth(ssh_session session, const char *user, uint32_t n_oid, ssh_string *oids);
 SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_token_server);
@@ -41,5 +45,9 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_response);
 
 
 int ssh_gssapi_auth_mic(ssh_session session);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GSSAPI_H */

@@ -43,6 +43,11 @@ struct ssh_packet_callbacks_struct ssh_ecdh_client_callbacks = {
     .user = NULL
 };
 
+void ssh_client_ecdh_remove_callbacks(ssh_session session)
+{
+    ssh_packet_remove_callbacks(session, &ssh_ecdh_client_callbacks);
+}
+
 /** @internal
  * @brief parses a SSH_MSG_KEX_ECDH_REPLY packet and sends back
  * a SSH_MSG_NEWKEYS
@@ -55,7 +60,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_ecdh_reply){
   (void)type;
   (void)user;
 
-  ssh_packet_remove_callbacks(session, &ssh_ecdh_client_callbacks);
+  ssh_client_ecdh_remove_callbacks(session);
   pubkey_blob = ssh_buffer_get_ssh_string(packet);
   if (pubkey_blob == NULL) {
     ssh_set_error(session,SSH_FATAL, "No public key in packet");

@@ -62,9 +62,17 @@ struct ssh_private_key_struct {
 #endif
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const char *ssh_type_to_char(int type);
 int ssh_type_from_name(const char *name);
 
 ssh_public_key publickey_from_string(ssh_session session, ssh_string pubkey_s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* KEYS_H_ */

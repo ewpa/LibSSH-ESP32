@@ -26,6 +26,10 @@
 #ifndef CONFIG_PARSER_H_
 #define CONFIG_PARSER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char *ssh_config_get_cmd(char **str);
 
 char *ssh_config_get_token(char **str);
@@ -53,5 +57,9 @@ int ssh_config_parse_uri(const char *tok,
         char **username,
         char **hostname,
         char **port);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LIBSSH_CONFIG_H_ */

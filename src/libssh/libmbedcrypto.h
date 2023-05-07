@@ -73,6 +73,10 @@ struct mbedtls_ecdsa_sig {
     bignum s;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bignum ssh_mbedcry_bn_new(void);
 void ssh_mbedcry_bn_free(bignum num);
 unsigned char *ssh_mbedcry_bn2num(const_bignum num, int radix);
@@ -135,6 +139,10 @@ ssh_string make_ecpoint_string(const mbedtls_ecp_group *g, const
         mbedtls_ecp_point *p);
 
 #define ssh_fips_mode() false
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HAVE_LIBMBEDCRYPTO */
 #endif /* LIBMBEDCRYPTO_H_ */

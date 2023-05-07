@@ -23,6 +23,10 @@
 
 #include "libssh/pki.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* defined in bcrypt_pbkdf.c */
 int bcrypt_pbkdf(const char *pass,
                  size_t passlen,
@@ -149,7 +153,7 @@ int pki_ed25519_verify(const ssh_key pubkey, ssh_signature sig,
 int pki_ed25519_key_cmp(const ssh_key k1,
                 const ssh_key k2,
                 enum ssh_keycmp_e what);
-int pki_ed25519_key_dup(ssh_key new, const ssh_key key);
+int pki_ed25519_key_dup(ssh_key new_key, const ssh_key key);
 int pki_ed25519_public_key_to_blob(ssh_buffer buffer, ssh_key key);
 ssh_string pki_ed25519_signature_to_blob(ssh_signature sig);
 int pki_signature_from_ed25519_blob(ssh_signature sig, ssh_string sig_blob);
@@ -164,8 +168,14 @@ ssh_key ssh_pki_openssh_privkey_import(const char *text_key,
 ssh_string ssh_pki_openssh_privkey_export(const ssh_key privkey,
         const char *passphrase, ssh_auth_callback auth_fn, void *auth_data);
 
+#ifdef WITH_PKCS11_URI
 /* URI Function */
 int pki_uri_import(const char *uri_name, ssh_key *key, enum ssh_key_e key_type);
+#endif /* WITH_PKCS11_URI */
 
 bool ssh_key_size_allowed_rsa(int min_size, ssh_key key);
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* PKI_PRIV_H_ */

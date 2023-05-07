@@ -4,7 +4,7 @@
 // Simple port of examples/samplesshd-kbdint.c over WiFi.  Run with a serial
 // monitor at 115200 BAUD.
 //
-// Copyright (C) 2016–2022 Ewan Parker.
+// Copyright (C) 2016–2023 Ewan Parker.
 
 /* This is a sample implementation of a libssh based SSH server */
 /*
@@ -432,9 +432,9 @@ int ex_main(int argc, char **argv){
         }
     } while(!chan);
 
-    if(!chan) {
-        printf("Error: cleint did not ask for a channel session (%s)\n",
-                                                    ssh_get_error(session));
+    if (!chan) {
+        printf("Error: client did not ask for a channel session (%s)\n",
+               ssh_get_error(session));
         ssh_finalize();
         return 1;
     }

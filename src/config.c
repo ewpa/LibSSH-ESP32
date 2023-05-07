@@ -356,7 +356,7 @@ ssh_exec_shell(char *cmd)
         if (rc == -1) {
             SSH_LOG(SSH_LOG_WARN, "dup2: %s",
                     ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
-	    exit(1);
+            exit(1);
         }
         if (devnull > STDERR_FILENO) {
             close(devnull);
@@ -395,7 +395,7 @@ ssh_exec_shell(char *cmd)
         }
     }
     if (!WIFEXITED(status)) {
-        SSH_LOG(SSH_LOG_WARN, "Command %s exitted abnormally", cmd);
+        SSH_LOG(SSH_LOG_WARN, "Command %s exited abnormally", cmd);
         return -1;
     }
     SSH_LOG(SSH_LOG_TRACE, "Command '%s' returned %d", cmd, WEXITSTATUS(status));
@@ -491,7 +491,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
     if (hostname != NULL && do_parsing) {
         char com[512] = {0};
 
-        rv = snprintf(com, sizeof(com), "ssh%s%s%s%s%s%s -W [%%h]:%%p %s",
+        rv = snprintf(com, sizeof(com), "ssh%s%s%s%s%s%s -W '[%%h]:%%p' %s",
                       username ? " -l " : "",
                       username ? username : "",
                       port ? " -p " : "",
@@ -1006,7 +1006,7 @@ ssh_config_parse_line(ssh_session session,
         if (p == NULL) {
             break;
         } else if (strcmp(p, "default") == 0) {
-            /* Default rekey limits enforced automaticaly */
+            /* Default rekey limits enforced automatically */
             ll = 0;
         } else {
             char *endp = NULL;

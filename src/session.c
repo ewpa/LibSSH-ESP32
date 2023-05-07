@@ -43,7 +43,7 @@
 #define FIRST_CHANNEL 42 // why not ? it helps to find bugs.
 
 /**
- * @defgroup libssh_session The SSH session functions.
+ * @defgroup libssh_session The SSH session functions
  * @ingroup libssh
  *
  * Functions that manage a session.
@@ -114,8 +114,14 @@ ssh_session ssh_new(void)
                           SSH_OPT_FLAG_KBDINT_AUTH |
                           SSH_OPT_FLAG_GSSAPI_AUTH;
 
+    session->opts.exp_flags = 0;
+
     session->opts.identity = ssh_list_new();
     if (session->opts.identity == NULL) {
+        goto err;
+    }
+    session->opts.identity_non_exp = ssh_list_new();
+    if (session->opts.identity_non_exp == NULL) {
         goto err;
     }
 
@@ -124,7 +130,7 @@ ssh_session ssh_new(void)
         goto err;
     }
 
-    rc = ssh_list_append(session->opts.identity, id);
+    rc = ssh_list_append(session->opts.identity_non_exp, id);
     if (rc == SSH_ERROR) {
         goto err;
     }
@@ -134,7 +140,7 @@ ssh_session ssh_new(void)
     if (id == NULL) {
         goto err;
     }
-    rc = ssh_list_append(session->opts.identity, id);
+    rc = ssh_list_append(session->opts.identity_non_exp, id);
     if (rc == SSH_ERROR) {
         goto err;
     }
@@ -144,7 +150,7 @@ ssh_session ssh_new(void)
     if (id == NULL) {
         goto err;
     }
-    rc = ssh_list_append(session->opts.identity, id);
+    rc = ssh_list_append(session->opts.identity_non_exp, id);
     if (rc == SSH_ERROR) {
         goto err;
     }
@@ -154,7 +160,7 @@ ssh_session ssh_new(void)
     if (id == NULL) {
         goto err;
     }
-    rc = ssh_list_append(session->opts.identity, id);
+    rc = ssh_list_append(session->opts.identity_non_exp, id);
     if (rc == SSH_ERROR) {
         goto err;
     }
@@ -284,6 +290,17 @@ void ssh_free(ssh_session session)
       ssh_list_free(session->opts.identity);
   }
 
+  if (session->opts.identity_non_exp) {
+      char *id;
+
+      for (id = ssh_list_pop_head(char *, session->opts.identity_non_exp);
+           id != NULL;
+           id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) {
+          SAFE_FREE(id);
+      }
+      ssh_list_free(session->opts.identity_non_exp);
+  }
+
     while ((b = ssh_list_pop_head(struct ssh_buffer_struct *,
                                   session->out_queue)) != NULL) {
         SSH_BUFFER_FREE(b);
@@ -300,6 +317,7 @@ void ssh_free(ssh_session session)
   SAFE_FREE(session->clientbanner);
   SAFE_FREE(session->banner);
   SAFE_FREE(session->disconnect_message);
+  SAFE_FREE(session->peer_discon_msg);
 
   SAFE_FREE(session->opts.agent_socket);
   SAFE_FREE(session->opts.bindaddr);
@@ -633,9 +651,10 @@ void ssh_set_fd_except(ssh_session session) {
  *
  * @return              SSH_OK on success, SSH_ERROR otherwise.
  */
-int ssh_handle_packets(ssh_session session, int timeout) {
-    ssh_poll_handle spoll;
-    ssh_poll_ctx ctx;
+int ssh_handle_packets(ssh_session session, int timeout)
+{
+    ssh_poll_handle spoll = NULL;
+    ssh_poll_ctx ctx = NULL;
     int tm = timeout;
     int rc;
 
@@ -653,11 +672,12 @@ int ssh_handle_packets(ssh_session session, int timeout) {
     }
 
     if (timeout == SSH_TIMEOUT_USER) {
-        if (ssh_is_blocking(session))
-          tm = ssh_make_milliseconds(session->opts.timeout,
-                                     session->opts.timeout_usec);
-        else
-          tm = 0;
+        if (ssh_is_blocking(session)) {
+            tm = ssh_make_milliseconds(session->opts.timeout,
+                                       session->opts.timeout_usec);
+        } else {
+            tm = 0;
+        }
     }
     rc = ssh_poll_ctx_dopoll(ctx, tm);
     if (rc == SSH_ERROR) {
@@ -819,11 +839,11 @@ const char *ssh_get_disconnect_message(ssh_session session) {
   if (session->session_state != SSH_SESSION_STATE_DISCONNECTED) {
     ssh_set_error(session, SSH_REQUEST_DENIED,
         "Connection not closed yet");
-  } else if(!session->discon_msg) {
+  } else if(!session->peer_discon_msg) {
     ssh_set_error(session, SSH_FATAL,
         "Connection correctly closed but no disconnect message");
   } else {
-    return session->discon_msg;
+    return session->peer_discon_msg;
   }
 
   return NULL;
@@ -1062,7 +1082,7 @@ void ssh_clean_pubkey_hash(unsigned char **hash)
  * @param[out] key      A pointer to store the allocated key. You need to free
  *                      the key using ssh_key_free().
  *
- * @return              SSH_OK on success, SSH_ERROR on errror.
+ * @return              SSH_OK on success, SSH_ERROR on error.
  *
  * @see ssh_key_free()
  */

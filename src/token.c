@@ -87,7 +87,7 @@ struct ssh_tokens_st *ssh_tokenize(const char *chain, char separator)
         return NULL;
     }
 
-    tokens->buffer= strdup(chain);
+    tokens->buffer = strdup(chain);
     if (tokens->buffer == NULL) {
         goto error;
     }

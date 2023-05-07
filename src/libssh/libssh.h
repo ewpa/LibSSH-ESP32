@@ -1,7 +1,7 @@
 /*
  * This file is part of the SSH Library
  *
- * Copyright (c) 2003-2022 by Aris Adamantiadis and the libssh team
+ * Copyright (c) 2003-2023 by Aris Adamantiadis and the libssh team
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -83,7 +83,7 @@
 #define PRINTF_ATTRIBUTE(a,b)
 #endif /* __GNUC__ */
 
-#ifdef __GNUC__
+#if !defined(SSH_SUPPRESS_DEPRECATED) && defined(__GNUC__)
 #define SSH_DEPRECATED __attribute__ ((deprecated))
 #else
 #define SSH_DEPRECATED
@@ -359,7 +359,7 @@ enum {
 #define SSH_LOG_WARN 1
 /** Get some information what's going on */
 #define SSH_LOG_INFO 2
-/** Get detailed debuging information **/
+/** Get detailed debugging information **/
 #define SSH_LOG_DEBUG 3
 /** Get trace output, packet information, ... */
 #define SSH_LOG_TRACE 4

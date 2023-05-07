@@ -23,6 +23,10 @@
 #include "libssh_esp32_config.h"
 #include "libssh/callbacks.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 SSH_PACKET_CALLBACK(ssh_packet_userauth_banner);
 SSH_PACKET_CALLBACK(ssh_packet_userauth_failure);
 SSH_PACKET_CALLBACK(ssh_packet_userauth_success);
@@ -99,5 +103,9 @@ enum ssh_auth_service_state_e {
   /** Access to service denied (fatal) */
   SSH_AUTH_SERVICE_DENIED,
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* AUTH_H_ */

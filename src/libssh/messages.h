@@ -92,6 +92,10 @@ struct ssh_message_struct {
     struct ssh_global_request global_request;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 SSH_PACKET_CALLBACK(ssh_packet_channel_open);
 SSH_PACKET_CALLBACK(ssh_packet_global_request);
 
@@ -103,5 +107,9 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request);
 int ssh_message_handle_channel_request(ssh_session session, ssh_channel channel, ssh_buffer packet,
     const char *request, uint8_t want_reply);
 ssh_message ssh_message_pop_head(ssh_session session);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MESSAGES_H_ */

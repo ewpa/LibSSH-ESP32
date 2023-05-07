@@ -21,6 +21,10 @@
 #ifndef MISC_H_
 #define MISC_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* in misc.c */
 /* gets the user home dir. */
 char *ssh_get_user_home_dir(void);
@@ -75,7 +79,7 @@ const void *_ssh_list_pop_head(struct ssh_list *list);
 
 /** @brief fetch the head element of a list and remove it from list
  * @param type type of the element to return
- * @param list the ssh_list to use
+ * @param ssh_list the ssh_list to use
  * @return the first element of the list, or NULL if the list is empty
  */
 #define ssh_list_pop_head(type, ssh_list)\
@@ -96,7 +100,11 @@ int ssh_mkdirs(const char *pathname, mode_t mode);
 
 int ssh_quote_file_name(const char *file_name, char *buf, size_t buf_len);
 int ssh_newline_vis(const char *string, char *buf, size_t buf_len);
-int ssh_tmpname(char *tmplate);
+int ssh_tmpname(char *name);
 
 char *ssh_strreplace(const char *src, const char *pattern, const char *repl);
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* MISC_H_ */

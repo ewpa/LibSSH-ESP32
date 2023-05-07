@@ -31,6 +31,10 @@ struct ssh_tokens_st {
     char **tokens;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ssh_tokens_st *ssh_tokenize(const char *chain, char separator);
 
 void ssh_tokens_free(struct ssh_tokens_st *tokens);
@@ -45,4 +49,8 @@ char *ssh_remove_duplicates(const char *list);
 
 char *ssh_append_without_duplicates(const char *list,
                                     const char *appended_list);
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* TOKEN_H_ */

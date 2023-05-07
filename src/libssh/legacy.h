@@ -31,6 +31,10 @@
 typedef struct ssh_private_key_struct* ssh_private_key;
 typedef struct ssh_public_key_struct* ssh_public_key;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 LIBSSH_API int ssh_auth_list(ssh_session session);
 LIBSSH_API int ssh_userauth_offer_pubkey(ssh_session session, const char *username, int type, ssh_string publickey);
 LIBSSH_API int ssh_userauth_pubkey(ssh_session session, const char *username, ssh_string publickey, ssh_private_key privatekey);
@@ -116,5 +120,9 @@ SSH_DEPRECATED LIBSSH_API ssh_string string_from_char(const char *what);
 SSH_DEPRECATED LIBSSH_API size_t string_len(ssh_string str);
 SSH_DEPRECATED LIBSSH_API ssh_string string_new(size_t size);
 SSH_DEPRECATED LIBSSH_API char *string_to_char(ssh_string str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LEGACY_H_ */

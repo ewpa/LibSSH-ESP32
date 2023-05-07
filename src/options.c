@@ -52,7 +52,7 @@
  * @brief Duplicate the options of a session structure.
  *
  * If you make several sessions with the same options this is useful. You
- * cannot use twice the same option structure in ssh_session_connect.
+ * cannot use twice the same option structure in ssh_connect.
  *
  * @param src           The session to use to copy the options.
  *
@@ -61,13 +61,14 @@
  *
  * @returns             0 on success, -1 on error with errno set.
  *
- * @see ssh_session_connect()
+ * @see ssh_connect()
  * @see ssh_free()
  */
 int ssh_options_copy(ssh_session src, ssh_session *dest)
 {
     ssh_session new;
     struct ssh_iterator *it = NULL;
+    struct ssh_list *list = NULL;
     char *id = NULL;
     int i;
 
@@ -105,14 +106,15 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     }
 
     /* Remove the default identities */
-    for (id = ssh_list_pop_head(char *, new->opts.identity);
+    for (id = ssh_list_pop_head(char *, new->opts.identity_non_exp);
          id != NULL;
-         id = ssh_list_pop_head(char *, new->opts.identity)) {
+         id = ssh_list_pop_head(char *, new->opts.identity_non_exp)) {
         SAFE_FREE(id);
     }
     /* Copy the new identities from the source list */
-    if (src->opts.identity != NULL) {
-        it = ssh_list_get_iterator(src->opts.identity);
+    list = new->opts.identity_non_exp;
+    it = ssh_list_get_iterator(src->opts.identity_non_exp);
+    for (i = 0; i < 2; i++) {
         while (it) {
             int rc;
 
@@ -122,7 +124,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
                 return -1;
             }
 
-            rc = ssh_list_append(new->opts.identity, id);
+            rc = ssh_list_append(list, id);
             if (rc < 0) {
                 free(id);
                 ssh_free(new);
@@ -130,6 +132,10 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
             }
             it = it->next;
         }
+
+        /* copy the identity list if there is any already */
+        list = new->opts.identity;
+        it = ssh_list_get_iterator(src->opts.identity);
     }
 
     if (src->opts.sshdir != NULL) {
@@ -315,7 +321,7 @@ int ssh_options_set_algo(ssh_session session,
  *                Add a new identity file (const char *, format string) to
  *                the identity list.\n
  *                \n
- *                By default identity, id_dsa and id_rsa are checked.\n
+ *                By default id_rsa, id_ecdsa and id_ed25519 files are used.\n
  *                \n
  *                The identity used to authenticate with public key will be
  *                prepended to the list.
@@ -345,6 +351,7 @@ int ssh_options_set_algo(ssh_session session,
  *                - SSH_LOG_PROTOCOL: High level protocol information
  *                - SSH_LOG_PACKET: Lower level protocol information, packet level
  *                - SSH_LOG_FUNCTIONS: Every function path
+ *                The default is SSH_LOG_NOLOG.
  *
  *              - SSH_OPTIONS_LOG_VERBOSITY_STR:
  *                Set the session logging verbosity via a
@@ -464,7 +471,7 @@ int ssh_options_set_algo(ssh_session session,
  *                (uint64_t, 0=default)
  *
  *              - SSH_OPTIONS_REKEY_TIME
- *                Set the time limit for a session before intializing a rekey
+ *                Set the time limit for a session before initializing a rekey
  *                in seconds. RFC 4253 Section 9 recommends one hour.
  *                (uint32_t, 0=off)
  *
@@ -565,7 +572,9 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 }
                 i = strtol(q, &p, 10);
                 if (q == p) {
+                    SSH_LOG(SSH_LOG_DEBUG, "No port number was parsed");
                     SAFE_FREE(q);
+                    return -1;
                 }
                 SAFE_FREE(q);
                 if (i <= 0) {
@@ -657,7 +666,11 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
             if (q == NULL) {
                 return -1;
             }
-            rc = ssh_list_prepend(session->opts.identity, q);
+            if (session->opts.exp_flags & SSH_OPT_EXP_FLAG_IDENTITY) {
+                rc = ssh_list_append(session->opts.identity_non_exp, q);
+            } else {
+                rc = ssh_list_prepend(session->opts.identity_non_exp, q);
+            }
             if (rc < 0) {
                 free(q);
                 return -1;
@@ -677,6 +690,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                     ssh_set_error_oom(session);
                     return -1;
                 }
+                session->opts.exp_flags &= ~SSH_OPT_EXP_FLAG_KNOWNHOSTS;
             }
             break;
         case SSH_OPTIONS_GLOBAL_KNOWNHOSTS:
@@ -698,6 +712,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                     ssh_set_error_oom(session);
                     return -1;
                 }
+                session->opts.exp_flags &= ~SSH_OPT_EXP_FLAG_GLOBAL_KNOWNHOSTS;
             }
             break;
         case SSH_OPTIONS_TIMEOUT:
@@ -761,7 +776,9 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 }
                 i = strtol(q, &p, 10);
                 if (q == p) {
+                    SSH_LOG(SSH_LOG_DEBUG, "No log verbositiy was parsed");
                     SAFE_FREE(q);
+                    return -1;
                 }
                 SAFE_FREE(q);
                 if (i < 0) {
@@ -862,10 +879,10 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 if (strcasecmp(value,"yes")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"zlib@openssh.com,zlib,none") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"zlib@openssh.com,none") < 0)
                         return -1;
                 } else if (strcasecmp(value,"no")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"none,zlib@openssh.com,zlib") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_C_S,"none,zlib@openssh.com") < 0)
                         return -1;
                 } else {
                     if (ssh_options_set_algo(session, SSH_COMP_C_S, v) < 0)
@@ -880,10 +897,10 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 if (strcasecmp(value,"yes")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"zlib@openssh.com,zlib,none") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"zlib@openssh.com,none") < 0)
                         return -1;
                 } else if (strcasecmp(value,"no")==0){
-                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"none,zlib@openssh.com,zlib") < 0)
+                    if(ssh_options_set_algo(session,SSH_COMP_S_C,"none,zlib@openssh.com") < 0)
                         return -1;
                 } else {
                     if (ssh_options_set_algo(session, SSH_COMP_S_C, v) < 0)
@@ -940,6 +957,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                         return -1;
                     }
                     session->opts.ProxyCommand = q;
+                    session->opts.exp_flags &= ~SSH_OPT_EXP_FLAG_PROXYCOMMAND;
                 }
             }
             break;
@@ -1138,7 +1156,7 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
  *              - SSH_OPTIONS_IDENTITY:
  *                Get the first identity file name (const char *).\n
  *                \n
- *                By default identity, id_dsa and id_rsa are checked.
+ *                By default id_rsa, id_ecdsa and id_ed25519 files are used.
  *
  *              - SSH_OPTIONS_PROXYCOMMAND:
  *                Get the proxycommand necessary to log into the
@@ -1182,7 +1200,11 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
             break;
         }
         case SSH_OPTIONS_IDENTITY: {
-            struct ssh_iterator *it = ssh_list_get_iterator(session->opts.identity);
+            struct ssh_iterator *it;
+            it = ssh_list_get_iterator(session->opts.identity);
+            if (it == NULL) {
+                it = ssh_list_get_iterator(session->opts.identity_non_exp);
+            }
             if (it == NULL) {
                 return SSH_ERROR;
             }
@@ -1477,7 +1499,6 @@ out:
 
 int ssh_options_apply(ssh_session session)
 {
-    struct ssh_iterator *it;
     char *tmp;
     int rc;
 
@@ -1495,71 +1516,96 @@ int ssh_options_apply(ssh_session session)
         }
     }
 
-    if (session->opts.knownhosts == NULL) {
-        tmp = ssh_path_expand_escape(session, "%d/known_hosts");
-    } else {
-        tmp = ssh_path_expand_escape(session, session->opts.knownhosts);
-    }
-    if (tmp == NULL) {
-        return -1;
-    }
-    free(session->opts.knownhosts);
-    session->opts.knownhosts = tmp;
-
-    if (session->opts.global_knownhosts == NULL) {
-        tmp = strdup("/etc/ssh/ssh_known_hosts");
-    } else {
-        tmp = ssh_path_expand_escape(session, session->opts.global_knownhosts);
-    }
-    if (tmp == NULL) {
-        return -1;
-    }
-    free(session->opts.global_knownhosts);
-    session->opts.global_knownhosts = tmp;
-
-    if (session->opts.ProxyCommand != NULL) {
-        char *p = NULL;
-        size_t plen = strlen(session->opts.ProxyCommand) +
-                      5 /* strlen("exec ") */;
-
-        p = malloc(plen + 1 /* \0 */);
-        if (p == NULL) {
-            return -1;
+    if ((session->opts.exp_flags & SSH_OPT_EXP_FLAG_KNOWNHOSTS) == 0) {
+        if (session->opts.knownhosts == NULL) {
+            tmp = ssh_path_expand_escape(session, "%d/known_hosts");
+        } else {
+            tmp = ssh_path_expand_escape(session, session->opts.knownhosts);
         }
-
-        rc = snprintf(p, plen + 1, "exec %s", session->opts.ProxyCommand);
-        if ((size_t)rc != plen) {
-            free(p);
-            return -1;
-        }
-
-        tmp = ssh_path_expand_escape(session, p);
-        free(p);
         if (tmp == NULL) {
             return -1;
         }
-        free(session->opts.ProxyCommand);
-        session->opts.ProxyCommand = tmp;
+        free(session->opts.knownhosts);
+        session->opts.knownhosts = tmp;
+        session->opts.exp_flags |= SSH_OPT_EXP_FLAG_KNOWNHOSTS;
     }
 
-    for (it = ssh_list_get_iterator(session->opts.identity);
-         it != NULL;
-         it = it->next) {
-        char *id = (char *) it->data;
-        if (strncmp(id, "pkcs11:", 6) == 0) {
+    if ((session->opts.exp_flags & SSH_OPT_EXP_FLAG_GLOBAL_KNOWNHOSTS) == 0) {
+        if (session->opts.global_knownhosts == NULL) {
+            tmp = strdup("/etc/ssh/ssh_known_hosts");
+        } else {
+            tmp = ssh_path_expand_escape(session,
+                                         session->opts.global_knownhosts);
+        }
+        if (tmp == NULL) {
+            return -1;
+        }
+        free(session->opts.global_knownhosts);
+        session->opts.global_knownhosts = tmp;
+        session->opts.exp_flags |= SSH_OPT_EXP_FLAG_GLOBAL_KNOWNHOSTS;
+    }
+
+
+    if ((session->opts.exp_flags & SSH_OPT_EXP_FLAG_PROXYCOMMAND) == 0) {
+        if (session->opts.ProxyCommand != NULL) {
+            char *p = NULL;
+            size_t plen = strlen(session->opts.ProxyCommand) +
+                          5 /* strlen("exec ") */;
+
+            if (strncmp(session->opts.ProxyCommand, "exec ", 5) != 0) {
+                p = malloc(plen + 1 /* \0 */);
+                if (p == NULL) {
+                    return -1;
+                }
+
+                rc = snprintf(p, plen + 1, "exec %s", session->opts.ProxyCommand);
+                if ((size_t)rc != plen) {
+                    free(p);
+                    return -1;
+                }
+                tmp = ssh_path_expand_escape(session, p);
+                free(p);
+            } else {
+                tmp = ssh_path_expand_escape(session,
+                                             session->opts.ProxyCommand);
+            }
+
+            if (tmp == NULL) {
+                return -1;
+            }
+            free(session->opts.ProxyCommand);
+            session->opts.ProxyCommand = tmp;
+            session->opts.exp_flags |= SSH_OPT_EXP_FLAG_PROXYCOMMAND;
+        }
+    }
+
+    for (tmp = ssh_list_pop_head(char *, session->opts.identity_non_exp);
+         tmp != NULL;
+         tmp = ssh_list_pop_head(char *, session->opts.identity_non_exp)) {
+        char *id = tmp;
+        if (strncmp(id, "pkcs11:", 6) != 0) {
             /* PKCS#11 URIs are using percent-encoding so we can not mix
              * it with ssh expansion of ssh escape characters.
-             * Skip these identities now, before we will have PKCS#11 support
              */
-             continue;
+            tmp = ssh_path_expand_escape(session, id);
+            if (tmp == NULL) {
+                return -1;
+            }
+            free(id);
         }
-        tmp = ssh_path_expand_escape(session, id);
-        if (tmp == NULL) {
+
+        /* use append to keep the order at first call and use prepend
+         * to put anything that comes on the nth calls to the beginning */
+        if (session->opts.exp_flags & SSH_OPT_EXP_FLAG_IDENTITY) {
+            rc = ssh_list_prepend(session->opts.identity, tmp);
+        } else {
+            rc = ssh_list_append(session->opts.identity, tmp);
+        }
+        if (rc != SSH_OK) {
             return -1;
         }
-        free(id);
-        it->data = tmp;
     }
+    session->opts.exp_flags |= SSH_OPT_EXP_FLAG_IDENTITY;
 
     return 0;
 }
@@ -1663,6 +1709,7 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                        - SSH_LOG_PROTOCOL: High level protocol information
  *                        - SSH_LOG_PACKET: Lower level protocol information, packet level
  *                        - SSH_LOG_FUNCTIONS: Every function path
+ *                        The default is SSH_LOG_NOLOG.
  *
  *                      - SSH_BIND_OPTIONS_LOG_VERBOSITY_STR:
  *                        Set the session logging verbosity via a
@@ -1943,7 +1990,9 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
         }
         i = strtol(q, &p, 10);
         if (q == p) {
-          SAFE_FREE(q);
+            SSH_LOG(SSH_LOG_DEBUG, "No bind port was parsed");
+            SAFE_FREE(q);
+            return -1;
         }
         SAFE_FREE(q);
 
@@ -1970,7 +2019,9 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
         }
         i = strtol(q, &p, 10);
         if (q == p) {
-          SAFE_FREE(q);
+            SSH_LOG(SSH_LOG_DEBUG, "No log verbositiy was parsed");
+            SAFE_FREE(q);
+            return -1;
         }
         SAFE_FREE(q);
 

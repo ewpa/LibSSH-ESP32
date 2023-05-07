@@ -1474,6 +1474,14 @@ error:
   return SSH_ERROR;
 }
 
+/** @internal
+ *
+ * @brief       Sends a successful channel request reply
+ *
+ * @param msg   A message to reply to
+ *
+ * @returns     SSH_OK on success, SSH_ERROR if an error occurred.
+ */
 int ssh_message_channel_request_reply_success(ssh_message msg) {
   uint32_t channel;
   int rc;

@@ -216,6 +216,10 @@ struct ssh_cipher_struct {
     void (*cleanup)(struct ssh_cipher_struct *cipher);
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const struct ssh_cipher_struct *ssh_get_chacha20poly1305_cipher(void);
 int sshkdf_derive_key(struct ssh_crypto_struct *crypto,
                       unsigned char *key, size_t key_len,
@@ -226,5 +230,9 @@ int secure_memcmp(const void *s1, const void *s2, size_t n);
 #ifdef HAVE_LIBCRYPTO
 ENGINE *pki_get_engine(void);
 #endif /* HAVE_LIBCRYPTO */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CRYPTO_H_ */

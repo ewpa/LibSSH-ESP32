@@ -49,6 +49,10 @@
 #define BLF_MAXKEYLEN ((BLF_N-2)*4)	/* 448 bits */
 #define BLF_MAXUTILIZED ((BLF_N+2)*4)	/* 576 bits */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Blowfish context */
 typedef struct BlowfishContext {
 	uint32_t S[4][256];	/* S-Boxes */
@@ -84,4 +88,9 @@ void ssh_blf_cbc_decrypt(ssh_blf_ctx *, uint8_t *, uint8_t *, uint32_t);
 uint32_t Blowfish_stream2word(const uint8_t *, uint16_t , uint16_t *);
 
 #endif /* !defined(HAVE_BCRYPT_PBKDF) && !defined(HAVE_BLH_H) */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _BLF_H */

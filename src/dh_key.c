@@ -289,8 +289,10 @@ void ssh_dh_cleanup(struct ssh_crypto_struct *crypto)
 /** @internal
  * @brief generates a secret DH parameter of at least DH_SECURITY_BITS
  *        security as well as the corresponding public key.
- * @param[out] parms a dh_kex paramters structure with preallocated bignum
+ *
+ * @param[out] params a dh_kex parameters structure with preallocated bignum
  *             where to store the parameters
+ *
  * @return SSH_OK on success, SSH_ERROR on error
  */
 int ssh_dh_keypair_gen_keys(struct dh_ctx *dh_ctx, int peer)

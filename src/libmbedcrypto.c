@@ -745,7 +745,7 @@ chacha20_poly1305_set_iv(struct ssh_cipher_struct *cipher,
 
     /* The nonce in mbedTLS is 96 b long. The counter is passed through separate
      * parameter of 32 b size.
-     * Encode the seqence number into the last 8 bytes.
+     * Encode the sequence number into the last 8 bytes.
      */
     PUSH_BE_U64(seqbuf, 4, seq);
 #ifdef DEBUG_CRYPTO

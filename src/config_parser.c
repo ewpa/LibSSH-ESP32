@@ -32,7 +32,7 @@
 #include "libssh/priv.h"
 
 /* Returns the original string after skipping the leading whitespace
- * and optional quotes.
+ * until finding LF.
  * This is useful in case we need to get the rest of the line (for example
  * external command).
  */
@@ -47,16 +47,7 @@ char *ssh_config_get_cmd(char **str)
             break;
         }
     }
-
-    if (*c == '\"') {
-        for (r = ++c; *c; c++) {
-            if (*c == '\"') {
-                *c = '\0';
-                goto out;
-            }
-        }
-    }
-
+    
     for (r = c; *c; c++) {
         if (*c == '\n') {
             *c = '\0';

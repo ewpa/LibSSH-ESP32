@@ -34,7 +34,7 @@
 #endif
 #include "libssh/crypto.h"
 #if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_ED25519)
-/* If using OpenSSL implementation, define the signature lenght which would be
+/* If using OpenSSL implementation, define the signature length which would be
  * defined in libssh/ed25519.h otherwise */
 #define ED25519_SIG_LEN 64
 #else
@@ -118,6 +118,10 @@ struct ssh_signature_struct {
 
 typedef struct ssh_signature_struct *ssh_signature;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* SSH Key Functions */
 void ssh_key_clean (ssh_key key);
 
@@ -189,7 +193,13 @@ bool ssh_key_size_allowed(ssh_session session, ssh_key key);
 int ssh_key_size(ssh_key key);
 
 /* PKCS11 URI function to check if filename is a path or a PKCS11 URI */
+#ifdef WITH_PKCS11_URI
 bool ssh_pki_is_uri(const char *filename);
 char *ssh_pki_export_pub_uri_from_priv_uri(const char *priv_uri);
+#endif /* WITH_PKCS11_URI */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PKI_H_ */

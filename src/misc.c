@@ -99,7 +99,7 @@
 #endif
 
 /**
- * @defgroup libssh_misc The SSH helper functions.
+ * @defgroup libssh_misc The SSH helper functions
  * @ingroup libssh
  *
  * Different helper functions used in the SSH Library.
@@ -830,7 +830,7 @@ void ssh_list_remove(struct ssh_list *list, struct ssh_iterator *iterator)
  * @brief Removes the top element of the list and returns the data value
  * attached to it.
  *
- * @param[in[  list     The ssh_list to remove the element.
+ * @param[in]  list     The ssh_list to remove the element.
  *
  * @returns             A pointer to the element being stored in head, or NULL
  *                      if the list is empty.
@@ -1840,23 +1840,23 @@ int ssh_newline_vis(const char *string, char *buf, size_t buf_len)
  *
  * @brief Replaces the last 6 characters of a string from 'X' to 6 random hexdigits.
  *
- * @param[in,out]  template   Any input string with last 6 characters as 'X'.
+ * @param[in,out]  name   Any input string with last 6 characters as 'X'.
  * @returns -1 as error when the last 6 characters of the input to be replaced are not 'X'
  * 0 otherwise.
  */
-int ssh_tmpname(char *template)
+int ssh_tmpname(char *name)
 {
     char *tmp = NULL;
     size_t i = 0;
     int rc = 0;
     uint8_t random[6];
 
-    if (template == NULL) {
+    if (name == NULL) {
         goto err;
     }
 
-    tmp = template + strlen(template) - 6;
-    if (tmp < template) {
+    tmp = name + strlen(name) - 6;
+    if (tmp < name) {
         goto err;
     }
 

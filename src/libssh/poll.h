@@ -116,6 +116,10 @@ typedef unsigned long int nfds_t;
 #endif /* WIN32 */
 #endif /* HAVE_POLL */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void ssh_poll_init(void);
 void ssh_poll_cleanup(void);
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout);
@@ -159,5 +163,9 @@ int ssh_poll_ctx_dopoll(ssh_poll_ctx ctx, int timeout);
 ssh_poll_ctx ssh_poll_get_default_ctx(ssh_session session);
 int ssh_event_add_poll(ssh_event event, ssh_poll_handle p);
 void ssh_event_remove_poll(ssh_event event, ssh_poll_handle p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* POLL_H_ */

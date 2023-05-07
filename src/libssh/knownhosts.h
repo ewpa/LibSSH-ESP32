@@ -22,11 +22,19 @@
 #ifndef SSH_KNOWNHOSTS_H_
 #define SSH_KNOWNHOSTS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ssh_list *ssh_known_hosts_get_algorithms(ssh_session session);
 char *ssh_known_hosts_get_algorithms_names(ssh_session session);
 enum ssh_known_hosts_e
 ssh_session_get_known_hosts_entry_file(ssh_session session,
                                        const char *filename,
                                        struct ssh_knownhosts_entry **pentry);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SSH_KNOWNHOSTS_H_ */

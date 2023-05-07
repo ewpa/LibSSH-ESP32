@@ -141,6 +141,13 @@ ssh_key ssh_key_new (void)
     return ptr;
 }
 
+/**
+ * @brief duplicates the key
+ *
+ * @param key An ssh_key to duplicate
+ *
+ * @return A duplicated ssh_key key
+ */
 ssh_key ssh_key_dup(const ssh_key key)
 {
     if (key == NULL) {
@@ -225,6 +232,8 @@ enum ssh_keytypes_e ssh_key_type(const ssh_key key)
  * @brief Convert a signature type to a string.
  *
  * @param[in]  type     The algorithm type to convert.
+ *
+ * @param[in] hash_type The hash type to convert
  *
  * @return              A string for the keytype or NULL if unknown.
  */
@@ -1085,7 +1094,7 @@ int ssh_pki_export_privkey_file(const ssh_key privkey,
     return SSH_OK;
 }
 
-/* temporary function to migrate seemlessly to ssh_key */
+/* temporary function to migrate seamlessly to ssh_key */
 ssh_public_key ssh_pki_convert_key_to_publickey(const ssh_key key)
 {
     ssh_public_key pub;
@@ -1718,6 +1727,7 @@ fail:
     return SSH_ERROR;
 }
 
+#ifdef WITH_PKCS11_URI
 /**
  *@brief Detect if the pathname in cmp is a PKCS #11 URI.
  *
@@ -1761,6 +1771,7 @@ char *ssh_pki_export_pub_uri_from_priv_uri(const char *priv_uri)
 
     return pub_uri_temp;
 }
+#endif /* WITH_PKCS11_URI */
 
 /**
  * @brief Import a public key from a file or a PKCS #11 device.
@@ -1946,7 +1957,7 @@ int ssh_pki_import_cert_file(const char *filename, ssh_key *pkey)
 }
 
 /**
- * @brief Generates a keypair.
+ * @brief Generates a key pair.
  *
  * @param[in] type      Type of key to create
  *
@@ -2151,6 +2162,18 @@ int ssh_pki_export_pubkey_base64(const ssh_key key,
     return SSH_OK;
 }
 
+/**
+ * @brief Export public key to file
+ *
+ * Exports the public key in AuthorizedKeysFile acceptable format.
+ * For more information see `man sshd`
+ *
+ * @param key A key to export
+ *
+ * @param filename The name of the output file
+ *
+ * @returns SSH_OK on success, SSH_ERROR otherwise.
+ */
 int ssh_pki_export_pubkey_file(const ssh_key key,
                                const char *filename)
 {
@@ -2504,7 +2527,7 @@ int ssh_pki_signature_verify(ssh_session session,
     allowed = ssh_key_size_allowed(session, key);
     if (!allowed) {
         ssh_set_error(session, SSH_FATAL, "The '%s' key of size %d is not "
-                      "allowd by RSA_MIN_SIZE", key->type_c, ssh_key_size(key));
+                      "allowed by RSA_MIN_SIZE", key->type_c, ssh_key_size(key));
         return SSH_ERROR;
     }
 

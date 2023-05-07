@@ -150,11 +150,21 @@ static void agent_set_channel(struct ssh_agent_struct *agent, ssh_channel channe
   agent->channel = channel;
 }
 
+/**
+ * @addtogroup libssh_auth
+ *
+ * @{
+ */
+
 /** @brief sets the SSH agent channel.
  * The SSH agent channel will be used to authenticate this client using
  * an agent through a channel, from another session. The most likely use
  * is to implement SSH Agent forwarding into a SSH proxy.
+ *
+ * @param session the session
+ *
  * @param[in] channel a SSH channel from another session.
+ *
  * @returns SSH_OK in case of success
  *          SSH_ERROR in case of an error
  */
@@ -188,6 +198,10 @@ int ssh_set_agent_socket(ssh_session session, socket_t fd){
   ssh_socket_set_fd(session->agent->sock, fd);
   return SSH_OK;
 }
+
+/**
+ * @}
+ */
 
 void ssh_agent_close(struct ssh_agent_struct *agent) {
   if (agent == NULL) {

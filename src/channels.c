@@ -2501,7 +2501,8 @@ ssh_channel ssh_forward_accept(ssh_session session, int timeout_ms)
 
 /**
  * @brief Accept an incoming TCP/IP forwarding channel and get some information
- * about incomming connection
+ * about incoming connection
+ *
  * @param[in]  session    The ssh session to use.
  *
  * @param[in]  timeout_ms A timeout in milliseconds.
@@ -2517,7 +2518,8 @@ ssh_channel ssh_channel_accept_forward(ssh_session session, int timeout_ms, int*
 
 /**
  * @brief Accept an incoming TCP/IP forwarding channel and get information
- * about incomming connection
+ * about incoming connection
+ *
  * @param[in]  session    The ssh session to use.
  *
  * @param[in]  timeout_ms A timeout in milliseconds.
@@ -3811,4 +3813,4 @@ error:
 
 #endif
 
-/* @} */
+/** @} */

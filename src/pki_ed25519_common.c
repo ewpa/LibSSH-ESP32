@@ -137,7 +137,7 @@ int pki_ed25519_key_cmp(const ssh_key k1,
  *
  * @return SSH_ERROR on error, SSH_OK on success
  */
-int pki_ed25519_key_dup(ssh_key new, const ssh_key key)
+int pki_ed25519_key_dup(ssh_key new_key, const ssh_key key)
 {
     if (key->ed25519_privkey == NULL && key->ed25519_pubkey == NULL) {
         return SSH_ERROR;
@@ -147,29 +147,29 @@ int pki_ed25519_key_dup(ssh_key new, const ssh_key key)
 #ifdef HAVE_OPENSSL_ED25519
         /* In OpenSSL implementation, the private key is the original private
          * seed, without the public key. */
-        new->ed25519_privkey = malloc(ED25519_KEY_LEN);
+        new_key->ed25519_privkey = malloc(ED25519_KEY_LEN);
 #else
         /* In the internal implementation, the private key is the concatenation
          * of the private seed with the public key. */
-        new->ed25519_privkey = malloc(2 * ED25519_KEY_LEN);
+        new_key->ed25519_privkey = malloc(2 * ED25519_KEY_LEN);
 #endif
-        if (new->ed25519_privkey == NULL) {
+        if (new_key->ed25519_privkey == NULL) {
             return SSH_ERROR;
         }
 #ifdef HAVE_OPENSSL_ED25519
-        memcpy(new->ed25519_privkey, key->ed25519_privkey, ED25519_KEY_LEN);
+        memcpy(new_key->ed25519_privkey, key->ed25519_privkey, ED25519_KEY_LEN);
 #else
-        memcpy(new->ed25519_privkey, key->ed25519_privkey, 2 * ED25519_KEY_LEN);
+        memcpy(new_key->ed25519_privkey, key->ed25519_privkey, 2 * ED25519_KEY_LEN);
 #endif
     }
 
     if (key->ed25519_pubkey != NULL) {
-        new->ed25519_pubkey = malloc(ED25519_KEY_LEN);
-        if (new->ed25519_pubkey == NULL) {
-            SAFE_FREE(new->ed25519_privkey);
+        new_key->ed25519_pubkey = malloc(ED25519_KEY_LEN);
+        if (new_key->ed25519_pubkey == NULL) {
+            SAFE_FREE(new_key->ed25519_privkey);
             return SSH_ERROR;
         }
-        memcpy(new->ed25519_pubkey, key->ed25519_pubkey, ED25519_KEY_LEN);
+        memcpy(new_key->ed25519_pubkey, key->ed25519_pubkey, ED25519_KEY_LEN);
     }
 
     return SSH_OK;

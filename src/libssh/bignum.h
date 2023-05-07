@@ -25,9 +25,16 @@
 #include "libssh/libgcrypt.h"
 #include "libssh/libmbedcrypto.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bignum ssh_make_string_bn(ssh_string string);
 ssh_string ssh_make_bignum_string(bignum num);
 void ssh_print_bignum(const char *which, const_bignum num);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BIGNUM_H_ */

@@ -55,6 +55,10 @@
 # endif
 #endif /* !defined(HAVE_STRTOULL) */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if !defined(HAVE_STRNDUP)
 char *strndup(const char *s, size_t n);
 #endif /* ! HAVE_STRNDUP */
@@ -443,5 +447,9 @@ bool is_ssh_initialized(void);
 
 #define SSH_ERRNO_MSG_MAX   1024
 char *ssh_strerror(int err_num, char *buf, size_t buflen);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LIBSSH_PRIV_H */

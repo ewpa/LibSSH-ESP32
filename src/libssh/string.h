@@ -22,6 +22,10 @@
 #define STRING_H_
 #include "libssh/priv.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* must be 32 bits number + immediately our data */
 #ifdef _MSC_VER
 #pragma pack(1)
@@ -37,5 +41,9 @@ __attribute__ ((packed))
 #pragma pack()
 #endif
 ;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STRING_H_ */

@@ -21,11 +21,19 @@
 #ifndef _OPTIONS_H
 #define _OPTIONS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ssh_config_parse_file(ssh_session session, const char *filename);
 int ssh_config_parse_string(ssh_session session, const char *input);
 int ssh_options_set_algo(ssh_session session,
                          enum ssh_kex_types_e algo,
                          const char *list);
 int ssh_options_apply(ssh_session session);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _OPTIONS_H */

@@ -25,6 +25,8 @@
 
 #include "libssh_esp32_config.h"
 
+#include <stdio.h>
+
 #include "libssh/priv.h"
 #include "libssh/crypto.h"
 #include "libssh/buffer.h"
@@ -352,6 +354,11 @@ error:
   return SSH_ERROR;
 }
 
+void ssh_client_dh_remove_callbacks(ssh_session session)
+{
+    ssh_packet_remove_callbacks(session, &ssh_dh_client_callbacks);
+}
+
 SSH_PACKET_CALLBACK(ssh_packet_client_dh_reply){
   struct ssh_crypto_struct *crypto=session->next_crypto;
   ssh_string pubkey_blob = NULL;
@@ -361,7 +368,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dh_reply){
   (void)type;
   (void)user;
 
-  ssh_packet_remove_callbacks(session, &ssh_dh_client_callbacks);
+  ssh_client_dh_remove_callbacks(session);
 
   rc = ssh_buffer_unpack(packet, "SBS", &pubkey_blob, &server_pubkey,
           &crypto->dh_server_signature);

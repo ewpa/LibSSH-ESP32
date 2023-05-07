@@ -29,7 +29,7 @@
 #include "libssh/session.h"
 
 /**
- * @defgroup libssh_error The SSH error functions.
+ * @defgroup libssh_error The SSH error functions
  * @ingroup libssh
  *
  * Functions for error handling.

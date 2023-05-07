@@ -424,7 +424,9 @@ void ssh_bind_free(ssh_bind sshbind){
   SAFE_FREE(sshbind);
 }
 
-int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd){
+int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd)
+{
+    ssh_poll_handle handle = NULL;
     int i, rc;
 
     if (sshbind == NULL) {
@@ -516,7 +518,12 @@ int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd){
       return SSH_ERROR;
     }
     ssh_socket_set_fd(session->socket, fd);
-    ssh_socket_get_poll_handle(session->socket);
+    handle = ssh_socket_get_poll_handle(session->socket);
+    if (handle == NULL) {
+        ssh_set_error_oom(sshbind);
+        return SSH_ERROR;
+    }
+    ssh_socket_set_connected(session->socket, handle);
 
     /* We must try to import any keys that could be imported in case
      * we are not using ssh_bind_listen (which is the other place

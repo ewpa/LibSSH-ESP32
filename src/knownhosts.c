@@ -480,6 +480,8 @@ static const char *ssh_known_host_sigs_from_hostkey_type(enum ssh_keytypes_e typ
         return "rsa-sha2-512,rsa-sha2-256,ssh-rsa";
     case SSH_KEYTYPE_ED25519:
         return "ssh-ed25519";
+    case SSH_KEYTYPE_SK_ED25519:
+        return "sk-ssh-ed25519@openssh.com";
 #ifdef HAVE_DSA
     case SSH_KEYTYPE_DSS:
         return "ssh-dss";
@@ -487,13 +489,15 @@ static const char *ssh_known_host_sigs_from_hostkey_type(enum ssh_keytypes_e typ
         SSH_LOG(SSH_LOG_WARN, "DSS keys are not supported by this build");
         break;
 #endif
-#ifdef HAVE_ECDH
+#ifdef HAVE_ECC
     case SSH_KEYTYPE_ECDSA_P256:
         return "ecdsa-sha2-nistp256";
     case SSH_KEYTYPE_ECDSA_P384:
         return "ecdsa-sha2-nistp384";
     case SSH_KEYTYPE_ECDSA_P521:
         return "ecdsa-sha2-nistp521";
+    case SSH_KEYTYPE_SK_ECDSA:
+        return "sk-ecdsa-sha2-nistp256@openssh.com";
 #else
     case SSH_KEYTYPE_ECDSA_P256:
     case SSH_KEYTYPE_ECDSA_P384:
@@ -1227,7 +1231,7 @@ ssh_session_get_known_hosts_entry(ssh_session session,
  *          SSH_KNOWN_HOSTS_NOT_FOUND: The known host file does not exist. The
  *                                     host is thus unknown. File will be
  *                                     created if host key is accepted.\n
- *          SSH_KNOWN_HOSTS_ERROR:     There had been an eror checking the host.
+ *          SSH_KNOWN_HOSTS_ERROR:     There had been an error checking the host.
  *
  * @see ssh_knownhosts_entry_free()
  */
