@@ -1170,8 +1170,8 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (packet_len > MAX_PACKET_LEN) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "read_packet(): Packet len too high(%u %.4x)",
-                              packet_len, packet_len);
+                              "read_packet(): Packet len too high(%lu %.4lx)",
+                              (long)packet_len, (long)packet_len);
                 goto error;
             }
             if (to_be_read < 0) {
@@ -1196,8 +1196,8 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                     /* give up, not enough data in buffer */
                     SSH_LOG(SSH_LOG_PACKET,
                             "packet: partial packet (read len) "
-                            "[len=%d, receivedlen=%d, to_be_read=%ld]",
-                            packet_len,
+                            "[len=%ld, receivedlen=%d, to_be_read=%ld]",
+                            (long)packet_len,
                             (int)receivedlen,
                             to_be_read);
                     return 0;
@@ -1295,9 +1295,9 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (padding > ssh_buffer_get_len(session->in_buffer)) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "Invalid padding: %d (%d left)",
+                              "Invalid padding: %d (%ld left)",
                               padding,
-                              ssh_buffer_get_len(session->in_buffer));
+                              (long)ssh_buffer_get_len(session->in_buffer));
                 goto error;
             }
             ssh_buffer_pass_bytes_end(session->in_buffer, padding);
@@ -1572,7 +1572,7 @@ SSH_PACKET_CALLBACK(ssh_packet_unimplemented){
     }
 
     SSH_LOG(SSH_LOG_RARE,
-            "Received SSH_MSG_UNIMPLEMENTED (sequence number %d)",seq);
+            "Received SSH_MSG_UNIMPLEMENTED (sequence number %ld)",(long)seq);
 
     return SSH_PACKET_USED;
 }
@@ -1738,13 +1738,13 @@ static int packet_send2(ssh_session session)
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-            "packet: wrote [type=%u, len=%u, padding_size=%hhd, comp=%u, "
-            "payload=%u]",
+            "packet: wrote [type=%u, len=%lu, padding_size=%hhd, comp=%lu, "
+            "payload=%lu]",
             type,
-            finallen,
+            (long)finallen,
             padding_size,
-            compsize,
-            payloadsize);
+            (long)compsize,
+            (long)payloadsize);
 
     rc = ssh_buffer_reinit(session->out_buffer);
     if (rc < 0) {

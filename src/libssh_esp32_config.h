@@ -85,7 +85,7 @@
 /* #undef HAVE_OPENSSL_ECDSA_H */
 
 /* Define to 1 if you have the <pthread.h> header file. */
-// #undef HAVE_PTHREAD_H
+/* #undef HAVE_PTHREAD_H */
 
 /* Define to 1 if you have elliptic curve cryptography in openssl */
 /* #undef HAVE_OPENSSL_ECC */

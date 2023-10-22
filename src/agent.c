@@ -275,7 +275,7 @@ static int agent_talk(struct ssh_session_struct *session,
   char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
   len = ssh_buffer_get_len(request);
-  SSH_LOG(SSH_LOG_TRACE, "Request length: %u", len);
+  SSH_LOG(SSH_LOG_TRACE, "Request length: %lu", (long)len);
   PUSH_BE_U32(payload, 0, len);
 
   /* send length and then the request packet */
@@ -303,10 +303,10 @@ static int agent_talk(struct ssh_session_struct *session,
   len = PULL_BE_U32(payload, 0);
   if (len > 256 * 1024) {
     ssh_set_error(session, SSH_FATAL,
-        "Authentication response too long: %u", len);
+        "Authentication response too long: %lu", (long)len);
     return -1;
   }
-  SSH_LOG(SSH_LOG_TRACE, "Response length: %u", len);
+  SSH_LOG(SSH_LOG_TRACE, "Response length: %lu", (long)len);
 
   payload = ssh_buffer_allocate(reply, len);
   if (payload == NULL) {
@@ -363,7 +363,7 @@ uint32_t ssh_agent_get_ident_count(struct ssh_session_struct *session)
     rc = ssh_buffer_get_u8(reply, (uint8_t *) &type);
     if (rc != sizeof(uint8_t)) {
         ssh_set_error(session, SSH_FATAL,
-                "Bad authentication reply size: %d", rc);
+                "Bad authentication reply size: %ld", (long)rc);
         SSH_BUFFER_FREE(reply);
         return 0;
     }

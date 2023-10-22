@@ -68,11 +68,11 @@ SSH_PACKET_CALLBACK(ssh_packet_disconnect_callback){
     session->peer_discon_msg = strdup(error);
   }
 
-  SSH_LOG(SSH_LOG_PACKET, "Received SSH_MSG_DISCONNECT %d:%s",
-                          code, error != NULL ? error : "no error");
+  SSH_LOG(SSH_LOG_PACKET, "Received SSH_MSG_DISCONNECT %ld:%s",
+                          (long)code, error != NULL ? error : "no error");
   ssh_set_error(session, SSH_FATAL,
-      "Received SSH_MSG_DISCONNECT: %d:%s",
-      code, error != NULL ? error : "no error");
+      "Received SSH_MSG_DISCONNECT: %ld:%s",
+      (long)code, error != NULL ? error : "no error");
   SAFE_FREE(error);
 
   ssh_socket_close(session->socket);
@@ -229,7 +229,7 @@ SSH_PACKET_CALLBACK(ssh_packet_ext_info)
         return SSH_PACKET_USED;
     }
 
-    SSH_LOG(SSH_LOG_PACKET, "Follows %u extensions", nr_extensions);
+    SSH_LOG(SSH_LOG_PACKET, "Follows %lu extensions", (long)nr_extensions);
 
     for (i = 0; i < nr_extensions; i++) {
         char *name = NULL;

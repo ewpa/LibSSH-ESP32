@@ -4,7 +4,7 @@
 // Simple port of examples/libssh_scp.c over WiFi.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2022 Ewan Parker.
+// Copyright (C) 2016–2023 Ewan Parker.
 
 /* libssh_scp.c
  * Sample implementation of a SCP client
@@ -31,6 +31,8 @@ const char *configSTAPSK = "YourWiFiPSK";
 // Stack size needed to run SSH and the command parser.
 const unsigned int configSTACK = 40960;
 
+#include <arpa/inet.h>
+#include "esp_netif.h"
 #include "IPv6Address.h"
 #include "WiFi.h"
 // Include the Arduino library.
@@ -953,50 +955,53 @@ end:
 
 #define newDevState(s) (devState = s)
 
-esp_err_t event_cb(void *ctx, system_event_t *event)
+void event_cb(void *args, esp_event_base_t base, int32_t id, void* event_data)
 {
-  switch(event->event_id)
+  switch(id)
   {
-    case SYSTEM_EVENT_STA_START:
-      //#if ESP_IDF_VERSION_MAJOR < 4
-      //WiFi.setHostname("libssh_esp32");
-      //#endif
+    case WIFI_EVENT_STA_START:
       Serial.print("% WiFi enabled with SSID=");
       Serial.println(configSTASSID);
       break;
-    case SYSTEM_EVENT_STA_CONNECTED:
-      WiFi.enableIpV6();
+    case WIFI_EVENT_STA_CONNECTED:
+      Serial.println("% WiFi connected");
       wifiPhyConnected = true;
       if (devState < STATE_PHY_CONNECTED) newDevState(STATE_PHY_CONNECTED);
       break;
-    case SYSTEM_EVENT_GOT_IP6:
-      if (event->event_info.got_ip6.ip6_info.ip.addr[0] != htons(0xFE80)
-      && !gotIp6Addr)
-      {
-        gotIp6Addr = true;
-      }
-      Serial.print("% IPv6 Address: ");
-      Serial.println(IPv6Address(event->event_info.got_ip6.ip6_info.ip.addr));
-      break;
-    case SYSTEM_EVENT_STA_GOT_IP:
-      gotIpAddr = true;
-      Serial.print("% IPv4 Address: ");
-      Serial.println(IPAddress(event->event_info.got_ip.ip_info.ip.addr));
-      break;
-    case SYSTEM_EVENT_STA_LOST_IP:
-      //gotIpAddr = false;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
+    case WIFI_EVENT_STA_DISCONNECTED:
       if (devState < STATE_WAIT_IPADDR) newDevState(STATE_NEW);
       if (wifiPhyConnected)
       {
+        Serial.println("% WiFi disconnected");
         wifiPhyConnected = false;
       }
       WiFi.begin(configSTASSID, configSTAPSK);
       break;
+    case IP_EVENT_GOT_IP6:
+      {
+        ip_event_got_ip6_t* event = (ip_event_got_ip6_t*) event_data;
+        if (event->ip6_info.ip.addr[0] != htons(0xFE80) && !gotIp6Addr)
+        {
+          gotIp6Addr = true;
+        }
+        Serial.print("% IPv6 Address: ");
+        Serial.println(IPv6Address(event->ip6_info.ip.addr));
+      }
+      break;
+    case IP_EVENT_STA_GOT_IP:
+      {
+        WiFi.enableIpV6(); // Under IDF 5 we need to get IPv4 address first.
+        gotIpAddr = true;
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        Serial.print("% IPv4 Address: ");
+        Serial.println(IPAddress(event->ip_info.ip.addr));
+      }
+      break;
+    case IP_EVENT_STA_LOST_IP:
+      //gotIpAddr = false;
     default:
       break;
   }
-  return ESP_OK;
 }
 
 void controlTask(void *pvParameter)
@@ -1058,7 +1063,7 @@ void controlTask(void *pvParameter)
           // Check the timeout.
           if (xTaskGetTickCount() >= xStartTime + xTicksTimeout)
           {
-            printf("%% Timeout waiting for IP address\n");
+            printf("%% Timeout waiting for all IP addresses\n");
             if (gotIpAddr || gotIp6Addr)
               newDevState(STATE_GOT_IPADDR);
             else
@@ -1084,13 +1089,16 @@ void controlTask(void *pvParameter)
 
         // Call the EXAMPLE main code.
         {
-          char *ex_argv[] = { EX_CMD, NULL };
+          const char *ex_argv[] = { EX_CMD, NULL };
           int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
           printf("%% Execution in progress:");
           short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
-          printf("\n\n");
-          int ex_rc = ex_main(ex_argc, ex_argv);
-          printf("\n%% Execution completed: rc=%d\n", ex_rc);
+          long start_millis = millis();
+          printf("\n[SNIP STDOUT START]\n");
+          int ex_rc = ex_main(ex_argc, (char**)ex_argv);
+          printf("[SNIP STDOUT FINISH]\n");
+          printf("%% Execution completed: rc=%d, elapsed=%ldms\n",
+            ex_rc, (long)millis() - start_millis);
         }
         while (1) vTaskDelay(60000 / portTICK_PERIOD_MS);
         // Finished the EXAMPLE main code.
@@ -1131,13 +1139,10 @@ void setup()
   Serial.begin(115200);
   #endif
 
-  #if ESP_IDF_VERSION_MAJOR >= 4
-  //WiFi.setHostname("libssh_esp32");
   esp_netif_init();
-  #else
-  tcpip_adapter_init();
-  #endif
-  esp_event_loop_init(event_cb, NULL);
+  esp_event_loop_create_default();
+  esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, event_cb, NULL, NULL);
+  esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID, event_cb, NULL, NULL);
 
   // Stack size needs to be larger, so continue in a new task.
   xTaskCreatePinnedToCore(controlTask, "ctl", configSTACK, NULL,
