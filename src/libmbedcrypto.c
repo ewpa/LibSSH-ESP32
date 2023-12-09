@@ -190,10 +190,10 @@ int hmac_update(HMACCTX c, const void *data, size_t len)
     return !mbedtls_md_hmac_update(c, data, len);
 }
 
-/* int hmac_final(HMACCTX c, unsigned char *hashmacbuf, size_t *len) */
-/* { */
-/*     int rc; */
-/*     *len = (unsigned int)mbedtls_md_get_size(mbedtls_md_info_from_ctx( */c));
+ int hmac_final(HMACCTX c, unsigned char *hashmacbuf, size_t *len) 
+	{ 
+     int rc; 
+     *len = (unsigned int)mbedtls_md_get_size(mbedtls_md_info_from_ctx(c));
     rc = !mbedtls_md_hmac_finish(c, hashmacbuf);
     mbedtls_md_free(c);
     SAFE_FREE(c);
