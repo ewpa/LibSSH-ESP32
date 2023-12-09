@@ -22,7 +22,6 @@
  */
 
 #include "libssh_esp32_config.h"
-
 #include "libssh/wrapper.h"
 #include "libssh/crypto.h"
 #include "libssh/priv.h"
@@ -95,7 +94,7 @@ EVPCTX evp_init(int nid)
         return NULL;
     }
 
-    mbedtls_md_init(ctx);
+    mbedtls_md_setup(ctx);
 
     rc = mbedtls_md_setup(ctx, md_info, 0);
     if (rc != 0) {
@@ -159,7 +158,7 @@ HMACCTX hmac_init(const void *key, size_t len, enum ssh_hmac_e type)
             goto error;
     }
 
-    mbedtls_md_init(ctx);
+    mbedtls_md_setup(ctx);
 
     if (md_info == NULL) {
         goto error;
