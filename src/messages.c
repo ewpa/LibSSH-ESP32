@@ -1092,10 +1092,10 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_info_response){
       session->kbdint->nanswers = 0;
   }
 
-  SSH_LOG(SSH_LOG_PACKET,"kbdint: %d answers",nanswers);
+  SSH_LOG(SSH_LOG_PACKET,"kbdint: %lu answers",nanswers);
   if (nanswers > KBDINT_MAX_PROMPT) {
     ssh_set_error(session, SSH_FATAL,
-        "Too much answers received from client: %u (0x%.4x)",
+        "Too much answers received from client: %lu (0x%.4lu)",
         nanswers, nanswers);
     ssh_kbdint_free(session->kbdint);
     session->kbdint = NULL;
@@ -1106,7 +1106,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_info_response){
   if(nanswers != session->kbdint->nprompts) {
     /* warn but let the application handle this case */
     SSH_LOG(SSH_LOG_PROTOCOL, "Warning: Number of prompts and answers"
-                " mismatch: p=%u a=%u", session->kbdint->nprompts, nanswers);
+                " mismatch: p=%lu a=%lu", session->kbdint->nprompts, nanswers);
   }
   session->kbdint->nanswers = nanswers;
 
@@ -1298,7 +1298,7 @@ int ssh_message_channel_request_open_reply_accept_channel(ssh_message msg, ssh_c
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-            "Accepting a channel request_open for chan %d",
+            "Accepting a channel request_open for chan %lu",
             chan->remote_channel);
 
     rc = ssh_packet_send(session);
@@ -1369,7 +1369,7 @@ int ssh_message_handle_channel_request(ssh_session session, ssh_channel channel,
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Received a %s channel_request for channel (%d:%d) (want_reply=%hhd)",
+      "Received a %s channel_request for channel (%lu:%lu) (want_reply=%hhd)",
       request, channel->local_channel, channel->remote_channel, want_reply);
 
   msg->type = SSH_REQUEST_CHANNEL;
@@ -1494,7 +1494,7 @@ int ssh_message_channel_request_reply_success(ssh_message msg) {
     channel = msg->channel_request.channel->remote_channel;
 
     SSH_LOG(SSH_LOG_PACKET,
-        "Sending a channel_request success to channel %d", channel);
+        "Sending a channel_request success to channel %lu", channel);
 
     rc = ssh_buffer_pack(msg->session->out_buffer,
                          "bd",
