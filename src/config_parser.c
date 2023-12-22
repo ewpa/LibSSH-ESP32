@@ -30,6 +30,7 @@
 
 #include "libssh/config_parser.h"
 #include "libssh/priv.h"
+#include "libssh/misc.h"
 
 /* Returns the original string after skipping the leading whitespace
  * until finding LF.
@@ -47,7 +48,7 @@ char *ssh_config_get_cmd(char **str)
             break;
         }
     }
-    
+
     for (r = c; *c; c++) {
         if (*c == '\n') {
             *c = '\0';
@@ -167,6 +168,7 @@ int ssh_config_parse_uri(const char *tok,
 {
     char *endp = NULL;
     long port_n;
+    int rc;
 
     /* Sanitize inputs */
     if (username != NULL) {
@@ -180,7 +182,7 @@ int ssh_config_parse_uri(const char *tok,
     }
 
     /* Username part (optional) */
-    endp = strchr(tok, '@');
+    endp = strrchr(tok, '@');
     if (endp != NULL) {
         /* Zero-length username is not valid */
         if (tok == endp) {
@@ -223,6 +225,14 @@ int ssh_config_parse_uri(const char *tok,
         *hostname = strndup(tok, endp - tok);
         if (*hostname == NULL) {
             goto error;
+        }
+        /* if not an ip, check syntax */
+        rc = ssh_is_ipaddr(*hostname);
+        if (rc == 0) {
+            rc = ssh_check_hostname_syntax(*hostname);
+            if (rc != SSH_OK) {
+                goto error;
+            }
         }
     }
     /* Skip also the closing bracket */

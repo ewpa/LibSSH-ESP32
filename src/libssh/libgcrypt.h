@@ -32,7 +32,6 @@ typedef gcry_md_hd_t SHA384CTX;
 typedef gcry_md_hd_t SHA512CTX;
 typedef gcry_md_hd_t MD5CTX;
 typedef gcry_md_hd_t HMACCTX;
-typedef gcry_md_hd_t EVPCTX;
 #define SHA_DIGEST_LENGTH 20
 #define SHA_DIGEST_LEN SHA_DIGEST_LENGTH
 #define MD5_DIGEST_LEN 16

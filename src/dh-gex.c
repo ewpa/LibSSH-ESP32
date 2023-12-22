@@ -297,15 +297,10 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_reply)
     }
 
     /* Send the MSG_NEWKEYS */
-    if (ssh_buffer_add_u8(session->out_buffer, SSH2_MSG_NEWKEYS) < 0) {
-        goto error;
-    }
-
-    rc = ssh_packet_send(session);
+    rc = ssh_packet_send_newkeys(session);
     if (rc == SSH_ERROR) {
         goto error;
     }
-    SSH_LOG(SSH_LOG_PROTOCOL, "SSH_MSG_NEWKEYS sent");
     session->dh_handshake_state = DH_STATE_NEWKEYS_SENT;
 
     return SSH_PACKET_USED;
@@ -485,10 +480,10 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
                 line);
     } else {
         SSH_LOG(SSH_LOG_WARNING,
-                "No moduli found for [%u:%u:%u]",
-                pmin,
-                pn,
-                pmax);
+                "No moduli found for [%lu:%lu:%lu]",
+                (long)pmin,
+                (long)pn,
+                (long)pmax);
     }
 
     return SSH_OK;
@@ -626,15 +621,16 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
         ssh_set_error_invalid(session);
         goto error;
     }
-    SSH_LOG(SSH_LOG_INFO, "dh-gex: DHGEX_REQUEST[%u:%u:%u]", pmin, pn, pmax);
+    SSH_LOG(SSH_LOG_INFO, "dh-gex: DHGEX_REQUEST[%lu:%lu:%lu]",
+            (long)pmin, (long)pn, (long)pmax);
 
     if (pmin > pn || pn > pmax || pn > DH_PMAX || pmax < DH_PMIN) {
         ssh_set_error(session,
                       SSH_FATAL,
-                      "Invalid dh-gex arguments [%u:%u:%u]",
-                      pmin,
-                      pn,
-                      pmax);
+                      "Invalid dh-gex arguments [%lu:%lu:%lu]",
+                      (long)pmin,
+                      (long)pn,
+                      (long)pmax);
         goto error;
     }
     session->next_crypto->dh_pmin = pmin;
@@ -658,10 +654,10 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
     if (rc == SSH_ERROR) {
         ssh_set_error(session,
                       SSH_FATAL,
-                      "Couldn't find DH group for [%u:%u:%u]",
-                      pmin,
-                      pn,
-                      pmax);
+                      "Couldn't find DH group for [%lu:%lu:%lu]",
+                      (long)pmin,
+                      (long)pn,
+                      (long)pmax);
         goto error;
     }
     rc = ssh_dh_set_parameters(session->next_crypto->dh_ctx,

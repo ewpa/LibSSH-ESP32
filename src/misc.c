@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <lwip/inet.h>
+#include <net/if.h>
 
 #endif /* _WIN32 */
 
@@ -63,6 +64,7 @@
 #include <ws2tcpip.h>
 #include <shlobj.h>
 #include <direct.h>
+#include <netioapi.h>
 
 #ifdef HAVE_IO_H
 #include <io.h>
@@ -97,6 +99,8 @@
 #else
 #define ZLIB_STRING ""
 #endif
+
+#define ARPA_DOMAIN_MAX_LEN 63
 
 /**
  * @defgroup libssh_misc The SSH helper functions
@@ -224,22 +228,37 @@ int ssh_is_ipaddr_v4(const char *str)
 int ssh_is_ipaddr(const char *str)
 {
     int rc = SOCKET_ERROR;
+    char *s = strdup(str);
 
-    if (strchr(str, ':')) {
+    if (s == NULL) {
+        return -1;
+    }
+    if (strchr(s, ':')) {
         struct sockaddr_storage ss;
         int sslen = sizeof(ss);
+        char *network_interface = strchr(s, '%');
 
-        /* TODO link-local (IP:v6:addr%ifname). */
-        rc = WSAStringToAddressA((LPSTR) str,
+        /* link-local (IP:v6:addr%ifname). */
+        if (network_interface != NULL) {
+            rc = if_nametoindex(network_interface + 1);
+            if (rc == 0) {
+                free(s);
+                return 0;
+            }
+            *network_interface = '\0';
+        }
+        rc = WSAStringToAddressA((LPSTR) s,
                                  AF_INET6,
                                  NULL,
                                  (struct sockaddr*)&ss,
                                  &sslen);
         if (rc == 0) {
+            free(s);
             return 1;
         }
     }
 
+    free(s);
     return ssh_is_ipaddr_v4(str);
 }
 #else /* _WIN32 */
@@ -345,17 +364,32 @@ int ssh_is_ipaddr_v4(const char *str)
 int ssh_is_ipaddr(const char *str)
 {
     int rc = -1;
+    char *s = strdup(str);
 
-    if (strchr(str, ':')) {
+    if (s == NULL) {
+        return -1;
+    }
+    if (strchr(s, ':')) {
         struct in6_addr dest6;
+        char *network_interface = strchr(s, '%');
 
-        /* TODO link-local (IP:v6:addr%ifname). */
-        rc = inet_pton(AF_INET6, str, &dest6);
+        /* link-local (IP:v6:addr%ifname). */
+        if (network_interface != NULL) {
+            rc = if_nametoindex(network_interface + 1);
+            if (rc == 0) {
+                free(s);
+                return 0;
+            }
+            *network_interface = '\0';
+        }
+        rc = inet_pton(AF_INET6, s, &dest6);
         if (rc > 0) {
+            free(s);
             return 1;
         }
     }
 
+    free(s);
     return ssh_is_ipaddr_v4(str);
 }
 
@@ -1976,6 +2010,72 @@ char *ssh_strerror(int err_num, char *buf, size_t buflen)
     }
     return buf;
 #endif /* defined(__linux__) && defined(__GLIBC__) && defined(_GNU_SOURCE) */
+}
+
+/**
+ * @brief Checks syntax of a domain name
+ *
+ * The check is made based on the RFC1035 section 2.3.1
+ * Allowed characters are: hyphen, period, digits (0-9) and letters (a-zA-Z)
+ *
+ * The label should be no longer than 63 characters
+ * The label should start with a letter and end with a letter or number
+ * The label in this implementation can start with a number to allow virtual
+ * URLs to pass. Note that this will make IPv4 addresses to pass
+ * this check too.
+ *
+ * @param hostname The domain name to be checked, has to be null terminated
+ *
+ * @return SSH_OK if the hostname passes syntax check
+ *         SSH_ERROR otherwise or if hostname is NULL or empty string
+ */
+int ssh_check_hostname_syntax(const char *hostname)
+{
+    char *it = NULL, *s = NULL, *buf = NULL;
+    size_t it_len;
+    char c;
+
+    if (hostname == NULL || strlen(hostname) == 0) {
+        return SSH_ERROR;
+    }
+
+    /* strtok_r writes into the string, keep the input clean */
+    s = strdup(hostname);
+    if (s == NULL) {
+        return SSH_ERROR;
+    }
+
+    it = strtok_r(s, ".", &buf);
+    /* if the token has 0 length */
+    if (it == NULL) {
+        free(s);
+        return SSH_ERROR;
+    }
+    do {
+        it_len = strlen(it);
+        if (it_len > ARPA_DOMAIN_MAX_LEN ||
+            /* the first char must be a letter, but some virtual urls start
+             * with a number */
+            isalnum(it[0]) == 0 ||
+            isalnum(it[it_len - 1]) == 0) {
+            free(s);
+            return SSH_ERROR;
+        }
+        while (*it != '\0') {
+            c = *it;
+            /* the "." is allowed too, but tokenization removes it from the
+             * string */
+            if (isalnum(c) == 0 && c != '-') {
+                free(s);
+                return SSH_ERROR;
+            }
+            it++;
+        }
+    } while ((it = strtok_r(NULL, ".", &buf)) != NULL);
+
+    free(s);
+
+    return SSH_OK;
 }
 
 /** @} */

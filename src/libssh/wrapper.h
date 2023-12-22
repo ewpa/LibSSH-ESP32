@@ -72,33 +72,33 @@ struct ssh_crypto_struct;
 
 typedef struct ssh_mac_ctx_struct *ssh_mac_ctx;
 MD5CTX md5_init(void);
-void md5_update_esp32_port(MD5CTX c, const void *data, size_t len);
-void md5_final(unsigned char *md,MD5CTX c);
+void md5_ctx_free(MD5CTX);
+int md5_update_esp32_port(MD5CTX c, const void *data, size_t len);
+int md5_final(unsigned char *md, MD5CTX c);
 
 SHACTX sha1_init(void);
-void sha1_update_esp32_port(SHACTX c, const void *data, size_t len);
-void sha1_final(unsigned char *md,SHACTX c);
-void sha1_esp32_port(const unsigned char *digest,size_t len,unsigned char *hash);
+void sha1_ctx_free(SHACTX);
+int sha1_update_esp32_port(SHACTX c, const void *data, size_t len);
+int sha1_final(unsigned char *md,SHACTX c);
+int sha1_esp32_port(const unsigned char *digest,size_t len, unsigned char *hash);
 
 SHA256CTX sha256_init(void);
-void sha256_update(SHA256CTX c, const void *data, size_t len);
-void sha256_final(unsigned char *md,SHA256CTX c);
-void sha256(const unsigned char *digest, size_t len, unsigned char *hash);
+void sha256_ctx_free(SHA256CTX);
+int sha256_update(SHA256CTX c, const void *data, size_t len);
+int sha256_final(unsigned char *md,SHA256CTX c);
+int sha256(const unsigned char *digest, size_t len, unsigned char *hash);
 
 SHA384CTX sha384_init(void);
-void sha384_update(SHA384CTX c, const void *data, size_t len);
-void sha384_final(unsigned char *md,SHA384CTX c);
-void sha384(const unsigned char *digest, size_t len, unsigned char *hash);
+void sha384_ctx_free(SHA384CTX);
+int sha384_update(SHA384CTX c, const void *data, size_t len);
+int sha384_final(unsigned char *md,SHA384CTX c);
+int sha384(const unsigned char *digest, size_t len, unsigned char *hash);
 
 SHA512CTX sha512_init(void);
-void sha512_update(SHA512CTX c, const void *data, size_t len);
-void sha512_final(unsigned char *md,SHA512CTX c);
-void sha512(const unsigned char *digest, size_t len, unsigned char *hash);
-
-void evp(int nid, unsigned char *digest, size_t len, unsigned char *hash, unsigned int *hlen);
-EVPCTX evp_init(int nid);
-void evp_update(EVPCTX ctx, const void *data, size_t len);
-void evp_final(EVPCTX ctx, unsigned char *md, unsigned int *mdlen);
+void sha512_ctx_free(SHA512CTX);
+int sha512_update(SHA512CTX c, const void *data, size_t len);
+int sha512_final(unsigned char *md,SHA512CTX c);
+int sha512(const unsigned char *digest, size_t len, unsigned char *hash);
 
 HMACCTX hmac_init(const void *key,size_t len, enum ssh_hmac_e type);
 int hmac_update(HMACCTX c, const void *data, size_t len);

@@ -37,6 +37,7 @@
 #include "libssh/session.h"
 #include "libssh/misc.h"
 #include "libssh/options.h"
+#include "libssh/config_parser.h"
 #ifdef WITH_SERVER
 #include "libssh/server.h"
 #include "libssh/bind.h"
@@ -515,33 +516,24 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 ssh_set_error_invalid(session);
                 return -1;
             } else {
-                q = strdup(value);
-                if (q == NULL) {
-                    ssh_set_error_oom(session);
+                char *username = NULL, *hostname = NULL, *port = NULL;
+                rc = ssh_config_parse_uri(value, &username, &hostname, &port);
+                if (rc != SSH_OK) {
                     return -1;
                 }
-                p = strrchr(q, '@');
-
-                SAFE_FREE(session->opts.host);
-
-                if (p) {
-                    *p = '\0';
-                    session->opts.host = strdup(p + 1);
-                    if (session->opts.host == NULL) {
-                        SAFE_FREE(q);
-                        ssh_set_error_oom(session);
-                        return -1;
-                    }
-
+                if (port != NULL) {
+                    SAFE_FREE(username);
+                    SAFE_FREE(hostname);
+                    SAFE_FREE(port);
+                    return -1;
+                }
+                if (username != NULL) {
                     SAFE_FREE(session->opts.username);
-                    session->opts.username = strdup(q);
-                    SAFE_FREE(q);
-                    if (session->opts.username == NULL) {
-                        ssh_set_error_oom(session);
-                        return -1;
-                    }
-                } else {
-                    session->opts.host = q;
+                    session->opts.username = username;
+                }
+                if (hostname != NULL) {
+                    SAFE_FREE(session->opts.host);
+                    session->opts.host = hostname;
                 }
             }
             break;

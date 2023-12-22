@@ -4,7 +4,7 @@
 // Simple port of examples/keygen2.c on SPIFFS.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2022 Ewan Parker.
+// Copyright (C) 2016–2023 Ewan Parker.
 
 /*
  * keygen2.c - Generate SSH keys using libssh
@@ -570,13 +570,16 @@ void controlTask(void *pvParameter)
 
   // Call the EXAMPLE main code.
   {
-    char *ex_argv[] = { EX_CMD, NULL };
-    int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
-    printf("%% Execution in progress:");
-    short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
-    printf("\n\n");
-    int ex_rc = ex_main(ex_argc, ex_argv);
-    printf("\n%% Execution completed: rc=%d\n", ex_rc);
+          const char *ex_argv[] = { EX_CMD, NULL };
+          int ex_argc = sizeof ex_argv/sizeof ex_argv[0] - 1;
+          printf("%% Execution in progress:");
+          short a; for (a = 0; a < ex_argc; a++) printf(" %s", ex_argv[a]);
+          long start_millis = millis();
+          printf("\n[SNIP STDOUT START]\n");
+          int ex_rc = ex_main(ex_argc, (char**)ex_argv);
+          printf("[SNIP STDOUT FINISH]\n");
+          printf("%% Execution completed: rc=%d, elapsed=%ldms\n",
+            ex_rc, (long)millis() - start_millis);
   }
   while (1) vTaskDelay(60000 / portTICK_PERIOD_MS);
   // Finished the EXAMPLE main code.

@@ -40,6 +40,7 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit);
 int ssh_send_kex(ssh_session session);
 void ssh_list_kex(struct ssh_kex_struct *kex);
 int ssh_set_client_kex(ssh_session session);
+int ssh_kex_append_extensions(ssh_session session, struct ssh_kex_struct *pkex);
 int ssh_kex_select_methods(ssh_session session);
 int ssh_verify_existing_algo(enum ssh_kex_types_e algo, const char *name);
 char *ssh_keep_known_algos(enum ssh_kex_types_e algo, const char *list);

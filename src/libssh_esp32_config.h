@@ -7,7 +7,7 @@
 #define PACKAGE "libssh"
 
 /* Version number of package */
-#define VERSION "0.10.5"
+#define VERSION "0.10.6"
 
 #define SYSCONFDIR "etc"
 #define BINARYDIR "/home/ewan/Documents/Development/Embedded/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-build-local"
@@ -31,7 +31,7 @@
 #define HAVE_GLOB_H 1
 
 /* Define to 1 if you have the <valgrind/valgrind.h> header file. */
-/* #undef HAVE_VALGRIND_VALGRIND_H */
+#define HAVE_VALGRIND_VALGRIND_H 1
 
 /* Define to 1 if you have the <pty.h> header file. */
 #define HAVE_PTY_H 1
@@ -85,7 +85,7 @@
 /* #undef HAVE_OPENSSL_ECDSA_H */
 
 /* Define to 1 if you have the <pthread.h> header file. */
-// #undef HAVE_PTHREAD_H
+/* #undef HAVE_PTHREAD_H */
 
 /* Define to 1 if you have elliptic curve cryptography in openssl */
 /* #undef HAVE_OPENSSL_ECC */

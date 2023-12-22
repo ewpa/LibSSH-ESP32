@@ -103,6 +103,9 @@ int ssh_newline_vis(const char *string, char *buf, size_t buf_len);
 int ssh_tmpname(char *name);
 
 char *ssh_strreplace(const char *src, const char *pattern, const char *repl);
+
+int ssh_check_hostname_syntax(const char *hostname);
+
 #ifdef __cplusplus
 }
 #endif

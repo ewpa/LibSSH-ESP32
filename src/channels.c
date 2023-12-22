@@ -193,9 +193,9 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_open_conf){
       goto error;
 
   SSH_LOG(SSH_LOG_PROTOCOL,
-      "Received a CHANNEL_OPEN_CONFIRMATION for channel %d:%d",
-      channel->local_channel,
-      channel->remote_channel);
+      "Received a CHANNEL_OPEN_CONFIRMATION for channel %ld:%ld",
+      (long)channel->local_channel,
+      (long)channel->remote_channel);
 
   if (channel->state != SSH_CHANNEL_STATE_OPENING) {
       SSH_LOG(SSH_LOG_RARE,
@@ -255,8 +255,8 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_open_fail){
   }
 
   ssh_set_error(session, SSH_REQUEST_DENIED,
-      "Channel opening failure: channel %u error (%"PRIu32") %s",
-      channel->local_channel,
+      "Channel opening failure: channel %lu error (%"PRIu32") %s",
+      (long)channel->local_channel,
       (uint32_t) code,
       error);
   SAFE_FREE(error);
@@ -328,8 +328,8 @@ channel_open(ssh_channel channel,
     channel->local_window = window;
 
     SSH_LOG(SSH_LOG_PROTOCOL,
-            "Creating a channel %d with %d window and %d max packet",
-            channel->local_channel, window, maxpacket);
+            "Creating a channel %ld with %ld window and %ld max packet",
+            (long)channel->local_channel, (long)window, (long)maxpacket);
 
     rc = ssh_buffer_pack(session->out_buffer,
                          "bsddd",
@@ -356,8 +356,8 @@ channel_open(ssh_channel channel,
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-            "Sent a SSH_MSG_CHANNEL_OPEN type %s for channel %d",
-            type, channel->local_channel);
+            "Sent a SSH_MSG_CHANNEL_OPEN type %s for channel %ld",
+            type, (long)channel->local_channel);
 
 pending:
     /* wait until channel is opened by server */
@@ -418,9 +418,9 @@ static int grow_window(ssh_session session,
 
   if (new_window <= channel->local_window) {
     SSH_LOG(SSH_LOG_PROTOCOL,
-        "growing window (channel %d:%d) to %d bytes : not needed (%d bytes)",
-        channel->local_channel, channel->remote_channel, new_window,
-        channel->local_window);
+       "growing window (channel %ld:%ld) to %ld bytes : not needed (%ld bytes)",
+       (long)channel->local_channel, (long)channel->remote_channel,
+       (long)new_window, (long)channel->local_window);
 
     return SSH_OK;
   }
@@ -442,10 +442,10 @@ static int grow_window(ssh_session session,
   }
 
   SSH_LOG(SSH_LOG_PROTOCOL,
-      "growing window (channel %d:%d) to %d bytes",
-      channel->local_channel,
-      channel->remote_channel,
-      new_window);
+      "growing window (channel %ld:%ld) to %ld bytes",
+      (long)channel->local_channel,
+      (long)channel->remote_channel,
+      (long)new_window);
 
   channel->local_window = new_window;
 
@@ -513,11 +513,11 @@ SSH_PACKET_CALLBACK(channel_rcv_change_window) {
   }
 
   SSH_LOG(SSH_LOG_PROTOCOL,
-      "Adding %d bytes to channel (%d:%d) (from %d bytes)",
-      bytes,
-      channel->local_channel,
-      channel->remote_channel,
-      channel->remote_window);
+      "Adding %ld bytes to channel (%ld:%ld) (from %ld bytes)",
+      (long)bytes,
+      (long)channel->local_channel,
+      (long)channel->remote_channel,
+      (long)channel->remote_window);
 
   channel->remote_window += bytes;
 
@@ -562,18 +562,18 @@ SSH_PACKET_CALLBACK(channel_rcv_data){
   len = ssh_string_len(str);
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Channel receiving %u bytes data in %d (local win=%d remote win=%d)",
-      len,
-      is_stderr,
-      channel->local_window,
-      channel->remote_window);
+      "Channel receiving %lu bytes data in %ld (local win=%ld remote win=%ld)",
+      (long)len,
+      (long)is_stderr,
+      (long)channel->local_window,
+      (long)channel->remote_window);
 
   /* What shall we do in this case? Let's accept it anyway */
   if (len > channel->local_window) {
     SSH_LOG(SSH_LOG_RARE,
-        "Data packet too big for our window(%u vs %d)",
-        len,
-        channel->local_window);
+        "Data packet too big for our window(%lu vs %ld)",
+        (long)len,
+        (long)channel->local_window);
   }
 
   if (channel_default_bufferize(channel, ssh_string_data(str), len,
@@ -590,9 +590,9 @@ SSH_PACKET_CALLBACK(channel_rcv_data){
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Channel windows are now (local win=%d remote win=%d)",
-      channel->local_window,
-      channel->remote_window);
+      "Channel windows are now (local win=%ld remote win=%ld)",
+      (long)channel->local_window,
+      (long)channel->remote_window);
 
   SSH_STRING_FREE(str);
 
@@ -644,9 +644,9 @@ SSH_PACKET_CALLBACK(channel_rcv_eof) {
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Received eof on channel (%d:%d)",
-      channel->local_channel,
-      channel->remote_channel);
+      "Received eof on channel (%ld:%ld)",
+      (long)channel->local_channel,
+      (long)channel->remote_channel);
   /* channel->remote_window = 0; */
   channel->remote_eof = 1;
 
@@ -689,9 +689,9 @@ SSH_PACKET_CALLBACK(channel_rcv_close) {
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-        "Received close on channel (%d:%d)",
-        channel->local_channel,
-        channel->remote_channel);
+        "Received close on channel (%ld:%ld)",
+        (long)channel->local_channel,
+        (long)channel->remote_channel);
 
     if (!ssh_channel_has_unread_data(channel)) {
         channel->state = SSH_CHANNEL_STATE_CLOSED;
@@ -916,8 +916,8 @@ int channel_default_bufferize(ssh_channel channel,
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-          "placing %u bytes into channel buffer (%s)",
-          len,
+          "placing %lu bytes into channel buffer (%s)",
+          (long)len,
           is_stderr ? "stderr" : "stdout");
   if (!is_stderr) {
     /* stdout */
@@ -1306,9 +1306,9 @@ int ssh_channel_send_eof(ssh_channel channel)
 
     rc = ssh_packet_send(session);
     SSH_LOG(SSH_LOG_PACKET,
-        "Sent a EOF on client channel (%d:%d)",
-        channel->local_channel,
-        channel->remote_channel);
+        "Sent a EOF on client channel (%ld:%ld)",
+        (long)channel->local_channel,
+        (long)channel->remote_channel);
     if (rc != SSH_OK) {
         goto error;
     }
@@ -1371,9 +1371,9 @@ int ssh_channel_close(ssh_channel channel)
 
     rc = ssh_packet_send(session);
     SSH_LOG(SSH_LOG_PACKET,
-            "Sent a close on client channel (%d:%d)",
-            channel->local_channel,
-            channel->remote_channel);
+            "Sent a close on client channel (%ld:%ld)",
+            (long)channel->local_channel,
+            (long)channel->remote_channel);
 
     if (rc == SSH_OK) {
         channel->state = SSH_CHANNEL_STATE_CLOSED;
@@ -1454,7 +1454,7 @@ static int channel_write_common(ssh_channel channel,
 
   if (len > INT_MAX) {
       SSH_LOG(SSH_LOG_PROTOCOL,
-              "Length (%u) is bigger than INT_MAX", len);
+              "Length (%lu) is bigger than INT_MAX", (long)len);
       return SSH_ERROR;
   }
 
@@ -1466,9 +1466,9 @@ static int channel_write_common(ssh_channel channel,
 
   if (channel->local_eof) {
     ssh_set_error(session, SSH_REQUEST_DENIED,
-        "Can't write to channel %d:%d  after EOF was sent",
-        channel->local_channel,
-        channel->remote_channel);
+        "Can't write to channel %ld:%ld  after EOF was sent",
+        (long)channel->local_channel,
+        (long)channel->remote_channel);
     return -1;
   }
 
@@ -1491,9 +1491,9 @@ static int channel_write_common(ssh_channel channel,
   while (len > 0) {
     if (channel->remote_window < len) {
       SSH_LOG(SSH_LOG_PROTOCOL,
-          "Remote window is %d bytes. going to write %d bytes",
-          channel->remote_window,
-          len);
+          "Remote window is %ld bytes. going to write %ld bytes",
+          (long)channel->remote_window,
+          (long)len);
       /* What happens when the channel window is zero? */
       if(channel->remote_window == 0) {
           /* nothing can be written */
@@ -1705,9 +1705,9 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_success){
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Received SSH_CHANNEL_SUCCESS on channel (%d:%d)",
-      channel->local_channel,
-      channel->remote_channel);
+      "Received SSH_CHANNEL_SUCCESS on channel (%ld:%ld)",
+      (long)channel->local_channel,
+      (long)channel->remote_channel);
   if(channel->request_state != SSH_CHANNEL_REQ_STATE_PENDING){
     SSH_LOG(SSH_LOG_RARE, "SSH_CHANNEL_SUCCESS received in incorrect state %d",
         channel->request_state);
@@ -1736,9 +1736,9 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_failure){
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Received SSH_CHANNEL_FAILURE on channel (%d:%d)",
-      channel->local_channel,
-      channel->remote_channel);
+      "Received SSH_CHANNEL_FAILURE on channel (%ld:%ld)",
+      (long)channel->local_channel,
+      (long)channel->remote_channel);
   if(channel->request_state != SSH_CHANNEL_REQ_STATE_PENDING){
     SSH_LOG(SSH_LOG_RARE, "SSH_CHANNEL_FAILURE received in incorrect state %d",
         channel->request_state);
@@ -3011,10 +3011,10 @@ int ssh_channel_read_timeout(ssh_channel channel,
    * as asked
    */
   SSH_LOG(SSH_LOG_PACKET,
-      "Read (%d) buffered : %d bytes. Window: %d",
-      count,
-      ssh_buffer_get_len(stdbuf),
-      channel->local_window);
+      "Read (%ld) buffered : %ld bytes. Window: %ld",
+      (long)count,
+      (long)ssh_buffer_get_len(stdbuf),
+      (long)channel->local_window);
 
   if (count > ssh_buffer_get_len(stdbuf) + channel->local_window) {
     if (grow_window(session, channel, count - ssh_buffer_get_len(stdbuf)) < 0) {
@@ -3527,9 +3527,15 @@ int ssh_channel_select(ssh_channel *readchans, ssh_channel *writechans,
     firstround=0;
   } while(1);
 
-  memcpy(readchans, rchans, (count_ptrs(rchans) + 1) * sizeof(ssh_channel ));
-  memcpy(writechans, wchans, (count_ptrs(wchans) + 1) * sizeof(ssh_channel ));
-  memcpy(exceptchans, echans, (count_ptrs(echans) + 1) * sizeof(ssh_channel ));
+  if (readchans != &dummy) {
+      memcpy(readchans, rchans, (count_ptrs(rchans) + 1) * sizeof(ssh_channel));
+  }
+  if (writechans != &dummy) {
+      memcpy(writechans, wchans, (count_ptrs(wchans) + 1) * sizeof(ssh_channel));
+  }
+  if (exceptchans != &dummy) {
+      memcpy(exceptchans, echans, (count_ptrs(echans) + 1) * sizeof(ssh_channel));
+  }
   SAFE_FREE(rchans);
   SAFE_FREE(wchans);
   SAFE_FREE(echans);

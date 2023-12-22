@@ -1170,8 +1170,8 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (packet_len > MAX_PACKET_LEN) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "read_packet(): Packet len too high(%u %.4x)",
-                              packet_len, packet_len);
+                              "read_packet(): Packet len too high(%lu %.4lx)",
+                              (long)packet_len, (long)packet_len);
                 goto error;
             }
             if (to_be_read < 0) {
@@ -1196,8 +1196,8 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                     /* give up, not enough data in buffer */
                     SSH_LOG(SSH_LOG_PACKET,
                             "packet: partial packet (read len) "
-                            "[len=%d, receivedlen=%d, to_be_read=%ld]",
-                            packet_len,
+                            "[len=%ld, receivedlen=%d, to_be_read=%ld]",
+                            (long)packet_len,
                             (int)receivedlen,
                             to_be_read);
                     return 0;
@@ -1295,9 +1295,9 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (padding > ssh_buffer_get_len(session->in_buffer)) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "Invalid padding: %d (%d left)",
+                              "Invalid padding: %d (%ld left)",
                               padding,
-                              ssh_buffer_get_len(session->in_buffer));
+                              (long)ssh_buffer_get_len(session->in_buffer));
                 goto error;
             }
             ssh_buffer_pass_bytes_end(session->in_buffer, padding);
@@ -1314,6 +1314,19 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             }
 #endif /* WITH_ZLIB */
             payloadsize = ssh_buffer_get_len(session->in_buffer);
+            if (session->recv_seq == UINT32_MAX) {
+                /* Overflowing sequence numbers is always fishy */
+                if (crypto == NULL) {
+                    /* don't allow sequence number overflow when unencrypted */
+                    ssh_set_error(session,
+                                  SSH_FATAL,
+                                  "Incoming sequence number overflow");
+                    goto error;
+                } else {
+                    SSH_LOG(SSH_LOG_WARNING,
+                            "Incoming sequence number overflow");
+                }
+            }
             session->recv_seq++;
             if (crypto != NULL) {
                 struct ssh_cipher_struct *cipher = NULL;
@@ -1338,7 +1351,19 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                     "comp=%" PRIu32 ",payload=%" PRIu32 "]",
                     session->in_packet.type, packet_len, padding, compsize,
                     payloadsize);
+            if (crypto == NULL) {
+                /* In strict kex, only a few packets are allowed. Taint the session
+                 * if we received packets that are normally allowed but to be
+                 * refused if we are in strict kex when KEX is over.
+                 */
+                uint8_t type = session->in_packet.type;
 
+                if (type != SSH2_MSG_KEXINIT && type != SSH2_MSG_NEWKEYS &&
+                    (type < SSH2_MSG_KEXDH_INIT ||
+                     type > SSH2_MSG_KEX_DH_GEX_REQUEST)) {
+                    session->flags |= SSH_SESSION_FLAG_KEX_TAINTED;
+                }
+            }
             /* Check if the packet is expected */
             filter_result = ssh_packet_incoming_filter(session);
 
@@ -1354,6 +1379,9 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                               session->in_packet.type);
                 goto error;
             case SSH_PACKET_UNKNOWN:
+                if (crypto == NULL) {
+                    session->flags |= SSH_SESSION_FLAG_KEX_TAINTED;
+                }
                 ssh_packet_send_unimplemented(session, session->recv_seq - 1);
                 break;
             }
@@ -1529,7 +1557,33 @@ void ssh_packet_process(ssh_session session, uint8_t type)
             SSH_LOG(SSH_LOG_RARE, "Failed to send unimplemented: %s",
                     ssh_get_error(session));
         }
+        if (session->current_crypto == NULL) {
+            session->flags |= SSH_SESSION_FLAG_KEX_TAINTED;
+        }
     }
+}
+
+/** @internal
+ * @brief sends a SSH_MSG_NEWKEYS when enabling the new negotiated ciphers
+ * @param session the SSH session
+ * @return SSH_ERROR on error, else SSH_OK
+ */
+int ssh_packet_send_newkeys(ssh_session session)
+{
+    int rc;
+
+    /* Send the MSG_NEWKEYS */
+    rc = ssh_buffer_add_u8(session->out_buffer, SSH2_MSG_NEWKEYS);
+    if (rc < 0) {
+        return rc;
+    }
+
+    rc = ssh_packet_send(session);
+    if (rc == SSH_ERROR) {
+        return rc;
+    }
+    SSH_LOG(SSH_LOG_DEBUG, "SSH_MSG_NEWKEYS sent");
+    return rc;
 }
 
 /** @internal
@@ -1572,7 +1626,7 @@ SSH_PACKET_CALLBACK(ssh_packet_unimplemented){
     }
 
     SSH_LOG(SSH_LOG_RARE,
-            "Received SSH_MSG_UNIMPLEMENTED (sequence number %d)",seq);
+            "Received SSH_MSG_UNIMPLEMENTED (sequence number %ld)",(long)seq);
 
     return SSH_PACKET_USED;
 }
@@ -1738,13 +1792,13 @@ static int packet_send2(ssh_session session)
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-            "packet: wrote [type=%u, len=%u, padding_size=%hhd, comp=%u, "
-            "payload=%u]",
+            "packet: wrote [type=%u, len=%lu, padding_size=%hhd, comp=%lu, "
+            "payload=%lu]",
             type,
-            finallen,
+            (long)finallen,
             padding_size,
-            compsize,
-            payloadsize);
+            (long)compsize,
+            (long)payloadsize);
 
     rc = ssh_buffer_reinit(session->out_buffer);
     if (rc < 0) {
@@ -1842,6 +1896,10 @@ int ssh_packet_send(ssh_session session)
     if (rc == SSH_OK && type == SSH2_MSG_NEWKEYS) {
         struct ssh_iterator *it;
 
+        if (session->flags & SSH_SESSION_FLAG_KEX_STRICT) {
+            /* reset packet sequence number when running in strict kex mode */
+            session->send_seq = 0;
+        }
         for (it = ssh_list_get_iterator(session->out_queue);
              it != NULL;
              it = ssh_list_get_iterator(session->out_queue)) {

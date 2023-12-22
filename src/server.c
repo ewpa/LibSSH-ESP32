@@ -195,7 +195,13 @@ int server_set_kex(ssh_session session)
         }
     }
 
-    return 0;
+    /* Do not append the extensions during rekey */
+    if (session->flags & SSH_SESSION_FLAG_AUTHENTICATED) {
+        return SSH_OK;
+    }
+
+    rc = ssh_kex_append_extensions(session, server);
+    return rc;
 }
 
 int ssh_server_init_kex(ssh_session session) {
@@ -544,9 +550,10 @@ int ssh_send_issue_banner(ssh_session session, const ssh_string banner)
             "Sending a server issue banner");
 
     rc = ssh_buffer_pack(session->out_buffer,
-                         "bS",
+                         "bSs",
                          SSH2_MSG_USERAUTH_BANNER,
-                         banner);
+                         banner,
+                         "");
     if (rc != SSH_OK) {
         ssh_set_error_oom(session);
         return SSH_ERROR;
@@ -685,7 +692,8 @@ static int ssh_message_channel_request_reply_default(ssh_message msg) {
     channel = msg->channel_request.channel->remote_channel;
 
     SSH_LOG(SSH_LOG_PACKET,
-        "Sending a default channel_request denied to channel %d", channel);
+        "Sending a default channel_request denied to channel %ld",
+        (long)channel);
 
     rc = ssh_buffer_pack(msg->session->out_buffer,
                          "bd",
