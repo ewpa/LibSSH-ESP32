@@ -464,7 +464,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
         }
         if (parse_entry) {
             /* We actually care only about the first item */
-            rv = ssh_config_parse_uri(cp, &username, &hostname, &port);
+            rv = ssh_config_parse_uri(cp, &username, &hostname, &port, false);
             /* The rest of the list needs to be passed on */
             if (endp != NULL) {
                 next = strdup(endp + 1);
@@ -475,7 +475,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
             }
         } else {
             /* The rest is just sanity-checked to avoid failures later */
-            rv = ssh_config_parse_uri(cp, NULL, NULL, NULL);
+            rv = ssh_config_parse_uri(cp, NULL, NULL, NULL, false);
         }
         if (rv != SSH_OK) {
             goto out;

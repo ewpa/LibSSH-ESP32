@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 char *ssh_config_get_cmd(char **str);
 
 char *ssh_config_get_token(char **str);
@@ -49,14 +51,17 @@ int ssh_config_get_yesno(char **str, int notfound);
  *                       be stored or NULL if we do not care about the result.
  * @param[out]  port     Pointer to the location, where the new port will
  *                       be stored or NULL if we do not care about the result.
+ * @param[in]   ignore_port Set to true if the we should not attempt to parse
+ *                       port number.
  *
  * @returns     SSH_OK if the provided string is in format of SSH URI,
  *              SSH_ERROR on failure
  */
 int ssh_config_parse_uri(const char *tok,
-        char **username,
-        char **hostname,
-        char **port);
+                         char **username,
+                         char **hostname,
+                         char **port,
+                         bool ignore_port);
 
 #ifdef __cplusplus
 }

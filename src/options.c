@@ -516,15 +516,9 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 ssh_set_error_invalid(session);
                 return -1;
             } else {
-                char *username = NULL, *hostname = NULL, *port = NULL;
-                rc = ssh_config_parse_uri(value, &username, &hostname, &port);
+                char *username = NULL, *hostname = NULL;
+                rc = ssh_config_parse_uri(value, &username, &hostname, NULL, true);
                 if (rc != SSH_OK) {
-                    return -1;
-                }
-                if (port != NULL) {
-                    SAFE_FREE(username);
-                    SAFE_FREE(hostname);
-                    SAFE_FREE(port);
                     return -1;
                 }
                 if (username != NULL) {

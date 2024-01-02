@@ -4,7 +4,7 @@
 // Ewan Parker, created 4th July 2020.
 // Missing implementations needed to link libssh with ESP32.
 //
-// Copyright (C) 2020–2023 Ewan Parker.
+// Copyright (C) 2020–2024 Ewan Parker.
 
 #ifndef LIBSSH_ESP32_COMPAT_H
 #define LIBSSH_ESP32_COMPAT_H
