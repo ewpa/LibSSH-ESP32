@@ -1,3 +1,4 @@
+
 ESP32 SSH client/server on Arduino
 ==================================
 
@@ -45,6 +46,19 @@ stable-0.10, version libssh-0.10.6.
  The SSH library
 
 ```
+
+LittleFS
+==================================
+
+  
+
+To use LittleFS add -DLIBSSH_ESP32_COMPAT_HOMEDIR=\"/littlefs\" in platformio.ini. build_flags example section:
+
+  
+
+    build_flags =
+    
+    -DLIBSSH_ESP32_COMPAT_HOMEDIR=\"/littlefs\"
 
 # Why?
 
