@@ -376,6 +376,7 @@ char *ssh_append_without_duplicates(const char *list,
 {
     size_t concat_len = 0;
     char *ret = NULL, *concat = NULL;
+    int rc = 0;
 
     if (list != NULL) {
         concat_len = strlen(list);
@@ -396,12 +397,144 @@ char *ssh_append_without_duplicates(const char *list,
         return NULL;
     }
 
-    if (list != NULL) {
-        strcpy(concat, list);
-        strncat(concat, ",", concat_len - strlen(concat) - 1);
+    rc = snprintf(concat, concat_len, "%s%s%s",
+                  list == NULL ? "" : list,
+                  list == NULL ? "" : ",",
+                  appended_list == NULL ? "" : appended_list);
+    if (rc < 0) {
+        SAFE_FREE(concat);
+        return NULL;
     }
-    if (appended_list != NULL) {
-        strncat(concat, appended_list, concat_len - strlen(concat) - 1);
+
+    ret = ssh_remove_duplicates(concat);
+
+    SAFE_FREE(concat);
+
+    return ret;
+}
+
+/**
+ * @internal
+ *
+ * @brief Given two strings containing lists of tokens, return a newly
+ * allocated string containing the elements of the first list without the
+ * elements of the second list. The order of the elements will be preserved.
+ *
+ * @param[in] list             The first list
+ * @param[in] remove_list      The list to be removed
+ *
+ * @return  A newly allocated copy list containing elements of the
+ * list without the elements of remove_list; NULL in case of error.
+ */
+char *ssh_remove_all_matching(const char *list,
+                              const char *remove_list)
+{
+    struct ssh_tokens_st *l_tok = NULL, *r_tok = NULL;
+    int i, j, cmp;
+    char *ret = NULL;
+    size_t len, pos = 0;
+    bool exclude;
+
+    if (list == NULL) {
+        return NULL;
+    }
+    if (remove_list == NULL) {
+        return strdup (list);
+    }
+
+    l_tok = ssh_tokenize(list, ',');
+    if (l_tok == NULL) {
+        goto out;
+    }
+
+    r_tok = ssh_tokenize(remove_list, ',');
+    if (r_tok == NULL) {
+        goto out;
+    }
+
+    ret = calloc(1, strlen(list) + 1);
+    if (ret == NULL) {
+        goto out;
+    }
+
+    for (i = 0; l_tok->tokens[i]; i++) {
+        exclude = false;
+        for (j = 0; r_tok->tokens[j]; j++) {
+            cmp = strcmp(l_tok->tokens[i], r_tok->tokens[j]);
+            if (cmp == 0) {
+                exclude = true;
+                break;
+            }
+        }
+        if (exclude == false) {
+            if (pos != 0) {
+                ret[pos] = ',';
+                pos++;
+            }
+
+            len = strlen(l_tok->tokens[i]);
+            memcpy(&ret[pos], l_tok->tokens[i], len);
+            pos += len;
+        }
+    }
+
+    if (ret[0] == '\0') {
+        SAFE_FREE(ret);
+    }
+
+out:
+    ssh_tokens_free(l_tok);
+    ssh_tokens_free(r_tok);
+    return ret;
+}
+
+/**
+ * @internal
+ *
+ * @brief Given two strings containing lists of tokens, return a newly
+ * allocated string containing all the elements of the first list prefixed at
+ * the beginning of the second list, without duplicates.
+ *
+ * @param[in] list             The first list
+ * @param[in] prefixed_list    The list to use as a prefix
+ *
+ * @return  A newly allocated list containing all the elements
+ * of the list prefixed with the elements of the prefixed_list without
+ * duplicates; NULL in case of error.
+ */
+char *ssh_prefix_without_duplicates(const char *list,
+                                    const char *prefixed_list)
+{
+    size_t concat_len = 0;
+    char *ret = NULL, *concat = NULL;
+    int rc = 0;
+
+    if (list != NULL) {
+        concat_len = strlen(list);
+    }
+
+    if (prefixed_list != NULL) {
+        concat_len += strlen(prefixed_list);
+    }
+
+    if (concat_len == 0) {
+        return NULL;
+    }
+
+    /* Add room for ending '\0' and for middle ',' */
+    concat_len += 2;
+    concat = calloc(concat_len, 1);
+    if (concat == NULL) {
+        return NULL;
+    }
+
+    rc = snprintf(concat, concat_len, "%s%s%s",
+                  prefixed_list == NULL ? "" : prefixed_list,
+                  prefixed_list == NULL ? "" : ",",
+                  list == NULL ? "" : list);
+    if (rc < 0) {
+        SAFE_FREE(concat);
+        return NULL;
     }
 
     ret = ssh_remove_duplicates(concat);

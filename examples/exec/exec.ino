@@ -4,7 +4,7 @@
 // Simple port of examples/template.c over WiFi.  Run with a serial monitor at
 // 115200 BAUD.
 //
-// Copyright (C) 2016–2023 Ewan Parker.
+// Copyright (C) 2016–2024 Ewan Parker.
 
 /* simple exec example */
 
@@ -20,7 +20,9 @@ const unsigned int configSTACK = 51200;
 
 #include <arpa/inet.h>
 #include "esp_netif.h"
+#if ESP_IDF_VERSION_MAJOR <= 4
 #include "IPv6Address.h"
+#endif
 #include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
@@ -595,12 +597,20 @@ void event_cb(void *args, esp_event_base_t base, int32_t id, void* event_data)
           gotIp6Addr = true;
         }
         Serial.print("% IPv6 Address: ");
+        #if ESP_IDF_VERSION_MAJOR >= 5
+        Serial.println(IPAddress((const uint8_t*)&event->ip6_info.ip.addr));
+        #else
         Serial.println(IPv6Address(event->ip6_info.ip.addr));
+        #endif
       }
       break;
     case IP_EVENT_STA_GOT_IP:
       {
+        #if ESP_IDF_VERSION_MAJOR >= 5
+        WiFi.enableIPv6(); // Under IDF 5 we need to get IPv4 address first.
+        #else
         WiFi.enableIpV6(); // Under IDF 5 we need to get IPv4 address first.
+        #endif
         gotIpAddr = true;
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         Serial.print("% IPv4 Address: ");

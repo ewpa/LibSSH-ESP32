@@ -34,6 +34,7 @@
 #include <mbedtls/cipher.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/platform.h>
 
 typedef mbedtls_md_context_t *SHACTX;
 typedef mbedtls_md_context_t *SHA256CTX;
@@ -58,6 +59,8 @@ typedef mbedtls_md_context_t *HMACCTX;
 
 #define EVP_DIGEST_LEN EVP_MAX_MD_SIZE
 
+#define ssh_crypto_free(x) mbedtls_free(x)
+
 typedef mbedtls_mpi *bignum;
 typedef const mbedtls_mpi *const_bignum;
 typedef void* bignum_CTX;
@@ -78,7 +81,7 @@ extern "C" {
 
 bignum ssh_mbedcry_bn_new(void);
 void ssh_mbedcry_bn_free(bignum num);
-unsigned char *ssh_mbedcry_bn2num(const_bignum num, int radix);
+char *ssh_mbedcry_bn2num(const_bignum num, int radix);
 int ssh_mbedcry_rand(bignum rnd, int bits, int top, int bottom);
 int ssh_mbedcry_is_bit_set(bignum num, size_t pos);
 int ssh_mbedcry_rand_range(bignum dest, bignum max);
@@ -104,7 +107,7 @@ int ssh_mbedcry_hex2bn(bignum *dest, char *data);
     } while(0)
 #define bignum_bn2dec(num) ssh_mbedcry_bn2num(num, 10)
 #define bignum_dec2bn(data, bn) mbedtls_mpi_read_string(bn, 10, data)
-#define bignum_bn2hex(num, dest) (*dest)=ssh_mbedcry_bn2num(num, 16)
+#define bignum_bn2hex(num, dest) (*dest)=(unsigned char *)ssh_mbedcry_bn2num(num, 16)
 #define bignum_hex2bn(data, dest) ssh_mbedcry_hex2bn(dest, data)
 #define bignum_rand(rnd, bits) ssh_mbedcry_rand((rnd), (bits), 0, 1)
 #define bignum_rand_range(rnd, max) ssh_mbedcry_rand_range(rnd, max)
@@ -126,7 +129,7 @@ int ssh_mbedcry_hex2bn(bignum *dest, char *data);
         *(dest) = bignum_new(); \
     } \
     if (*(dest) != NULL) { \
-        mbedtls_mpi_copy(orig, *(dest)); \
+        mbedtls_mpi_copy(*(dest), orig); \
     } \
     } while(0)
 

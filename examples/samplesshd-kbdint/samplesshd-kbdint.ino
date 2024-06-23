@@ -4,7 +4,7 @@
 // Simple port of examples/samplesshd-kbdint.c over WiFi.  Run with a serial
 // monitor at 115200 BAUD.
 //
-// Copyright (C) 2016–2023 Ewan Parker.
+// Copyright (C) 2016–2024 Ewan Parker.
 
 /* This is a sample implementation of a libssh based SSH server */
 /*
@@ -36,7 +36,9 @@ const unsigned int configSTACK = 10240;
 
 #include <arpa/inet.h>
 #include "esp_netif.h"
+#if ESP_IDF_VERSION_MAJOR <= 4
 #include "IPv6Address.h"
+#endif
 #include "WiFi.h"
 // Include the Arduino library.
 #include "libssh_esp32.h"
@@ -176,19 +178,11 @@ static struct argp_option options[] = {
     .group = 0
   },
   {
-    .name  = "dsakey",
-    .key   = 'd',
-    .arg   = "FILE",
-    .flags = 0,
-    .doc   = "Set the dsa key.",
-    .group = 0
-  },
-  {
     .name  = "rsakey",
     .key   = 'r',
     .arg   = "FILE",
     .flags = 0,
-    .doc   = "Set the rsa key.",
+    .doc   = "Set the rsa key (deprecated alias for 'k').",
     .group = 0
   },
   {
@@ -214,14 +208,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
       ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDPORT_STR, arg);
       port = atoi(arg);
       break;
-    case 'd':
-      ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_DSAKEY, arg);
-      break;
+    case 'r':
     case 'k':
       ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HOSTKEY, arg);
-      break;
-    case 'r':
-      ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY, arg);
       break;
     case 'v':
       ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_LOG_VERBOSITY_STR, "3");
@@ -371,10 +360,8 @@ int ex_main(int argc, char **argv){
     sshbind=ssh_bind_new();
     session=ssh_new();
 
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_DSAKEY,
-                                            KEYS_FOLDER "ssh_host_dsa_key");
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY,
-                                            KEYS_FOLDER "ssh_host_rsa_key");
+    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HOSTKEY,
+                         KEYS_FOLDER "ssh_host_rsa_key");
 
 #ifdef HAVE_ARGP_H
     /*
@@ -525,12 +512,20 @@ void event_cb(void *args, esp_event_base_t base, int32_t id, void* event_data)
           gotIp6Addr = true;
         }
         Serial.print("% IPv6 Address: ");
+        #if ESP_IDF_VERSION_MAJOR >= 5
+        Serial.println(IPAddress((const uint8_t*)&event->ip6_info.ip.addr));
+        #else
         Serial.println(IPv6Address(event->ip6_info.ip.addr));
+        #endif
       }
       break;
     case IP_EVENT_STA_GOT_IP:
       {
+        #if ESP_IDF_VERSION_MAJOR >= 5
+        WiFi.enableIPv6(); // Under IDF 5 we need to get IPv4 address first.
+        #else
         WiFi.enableIpV6(); // Under IDF 5 we need to get IPv4 address first.
+        #endif
         gotIpAddr = true;
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         Serial.print("% IPv4 Address: ");

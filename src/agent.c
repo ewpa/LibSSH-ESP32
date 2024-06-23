@@ -275,19 +275,19 @@ static int agent_talk(struct ssh_session_struct *session,
   char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
   len = ssh_buffer_get_len(request);
-  SSH_LOG(SSH_LOG_TRACE, "Request length: %lu", (long)len);
+  SSH_LOG(SSH_LOG_TRACE, "Request length: %" PRIu32, len);
   PUSH_BE_U32(payload, 0, len);
 
   /* send length and then the request packet */
   if (atomicio(session->agent, payload, 4, 0) == 4) {
     if (atomicio(session->agent, ssh_buffer_get(request), len, 0)
         != len) {
-      SSH_LOG(SSH_LOG_WARN, "atomicio sending request failed: %s",
-          ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+      SSH_LOG(SSH_LOG_TRACE, "atomicio sending request failed: %s",
+          strerror(errno));
       return -1;
     }
   } else {
-    SSH_LOG(SSH_LOG_WARN,
+    SSH_LOG(SSH_LOG_TRACE,
         "atomicio sending request length failed: %s",
         ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
     return -1;
@@ -295,27 +295,27 @@ static int agent_talk(struct ssh_session_struct *session,
 
   /* wait for response, read the length of the response packet */
   if (atomicio(session->agent, payload, 4, 1) != 4) {
-    SSH_LOG(SSH_LOG_WARN, "atomicio read response length failed: %s",
-        ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+    SSH_LOG(SSH_LOG_TRACE, "atomicio read response length failed: %s",
+        strerror(errno));
     return -1;
   }
 
   len = PULL_BE_U32(payload, 0);
   if (len > 256 * 1024) {
     ssh_set_error(session, SSH_FATAL,
-        "Authentication response too long: %lu", (long)len);
+        "Authentication response too long: %" PRIu32, len);
     return -1;
   }
-  SSH_LOG(SSH_LOG_TRACE, "Response length: %lu", (long)len);
+  SSH_LOG(SSH_LOG_TRACE, "Response length: %" PRIu32, len);
 
   payload = ssh_buffer_allocate(reply, len);
   if (payload == NULL) {
-    SSH_LOG(SSH_LOG_WARN, "Not enough space");
+    SSH_LOG(SSH_LOG_DEBUG, "Not enough space");
     return -1;
   }
 
   if (atomicio(session->agent, payload, len, 1) != len) {
-    SSH_LOG(SSH_LOG_WARN,
+    SSH_LOG(SSH_LOG_DEBUG,
         "Error reading response from authentication socket.");
     /* Rollback the unused space */
     ssh_buffer_pass_bytes_end(reply, len);
@@ -363,7 +363,7 @@ uint32_t ssh_agent_get_ident_count(struct ssh_session_struct *session)
     rc = ssh_buffer_get_u8(reply, (uint8_t *) &type);
     if (rc != sizeof(uint8_t)) {
         ssh_set_error(session, SSH_FATAL,
-                "Bad authentication reply size: %ld", (long)rc);
+                "Bad authentication reply size: %" PRIu32, rc);
         SSH_BUFFER_FREE(reply);
         return 0;
     }
@@ -371,7 +371,7 @@ uint32_t ssh_agent_get_ident_count(struct ssh_session_struct *session)
     type = bswap_32(type);
 #endif
 
-    SSH_LOG(SSH_LOG_WARN,
+    SSH_LOG(SSH_LOG_TRACE,
             "Answer type: %d, expected answer: %d",
             type, SSH2_AGENT_IDENTITIES_ANSWER);
 
@@ -404,9 +404,7 @@ uint32_t ssh_agent_get_ident_count(struct ssh_session_struct *session)
         return 0;
     }
 
-    if (session->agent->ident) {
-        ssh_buffer_reinit(session->agent->ident);
-    }
+    ssh_buffer_free(session->agent->ident);
     session->agent->ident = reply;
 
     return session->agent->count;
@@ -591,7 +589,7 @@ ssh_string ssh_agent_sign_data(ssh_session session,
 #endif
 
     if (agent_failed(type)) {
-        SSH_LOG(SSH_LOG_WARN, "Agent reports failure in signing the key");
+        SSH_LOG(SSH_LOG_DEBUG, "Agent reports failure in signing the key");
         SSH_BUFFER_FREE(reply);
         return NULL;
     } else if (type != SSH2_AGENT_SIGN_RESPONSE) {

@@ -66,7 +66,7 @@ ssh_scp ssh_scp_new(ssh_session session, int mode, const char *location)
 {
     ssh_scp scp = NULL;
 
-    if (session == NULL) {
+    if (session == NULL || location == NULL) {
         goto error;
     }
 
@@ -146,7 +146,7 @@ int ssh_scp_init(ssh_scp scp)
         return SSH_ERROR;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Initializing scp session %s %son location '%s'",
+    SSH_LOG(SSH_LOG_DEBUG, "Initializing scp session %s %son location '%s'",
             scp->mode == SSH_SCP_WRITE?"write":"read",
             scp->recursive ? "recursive " : "",
             scp->location);
@@ -376,7 +376,7 @@ int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode)
         goto error;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL,
+    SSH_LOG(SSH_LOG_DEBUG,
             "SCP pushing directory %s with permissions '%s'",
             vis_encoded, perms);
 
@@ -517,7 +517,7 @@ int ssh_scp_push_file64(ssh_scp scp, const char *filename, uint64_t size,
         goto error;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL,
+    SSH_LOG(SSH_LOG_DEBUG,
             "SCP pushing file %s, size %" PRIu64 " with permissions '%s'",
             vis_encoded, size, perms);
 
@@ -825,7 +825,7 @@ int ssh_scp_pull_request(ssh_scp scp)
         *p = '\0';
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Received SCP request: '%s'", buffer);
+    SSH_LOG(SSH_LOG_DEBUG, "Received SCP request: '%s'", buffer);
     switch(buffer[0]) {
     case 'C':
         /* File */

@@ -221,6 +221,12 @@ int ssh_set_log_callback(ssh_logging_callback cb) {
   return SSH_OK;
 }
 
+void
+_ssh_reset_log_cb(void)
+{
+    ssh_log_cb = NULL;
+}
+
 ssh_logging_callback ssh_get_log_callback(void) {
   return ssh_log_cb;
 }

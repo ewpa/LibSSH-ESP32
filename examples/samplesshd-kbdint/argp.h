@@ -28,8 +28,8 @@
 #define __need_error_t
 #include <errno.h>
 
-char *program_invocation_name;
-char *program_invocation_short_name;
+extern char *program_invocation_name;
+extern char *program_invocation_short_name;
 
 #ifndef __const
 # define __const const

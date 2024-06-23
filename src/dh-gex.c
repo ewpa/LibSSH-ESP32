@@ -116,7 +116,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_group)
     (void) type;
     (void) user;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "SSH_MSG_KEX_DH_GEX_GROUP received");
+    SSH_LOG(SSH_LOG_DEBUG, "SSH_MSG_KEX_DH_GEX_GROUP received");
 
     if (bignum_ctx_invalid(ctx)) {
         goto error;
@@ -261,7 +261,7 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_reply)
     bignum server_pubkey = NULL;
     (void)type;
     (void)user;
-    SSH_LOG(SSH_LOG_PROTOCOL, "SSH_MSG_KEX_DH_GEX_REPLY received");
+    SSH_LOG(SSH_LOG_DEBUG, "SSH_MSG_KEX_DH_GEX_REPLY received");
 
     ssh_client_dhgex_remove_callbacks(session);
     rc = ssh_buffer_unpack(packet,
@@ -435,7 +435,7 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
             if (rc == EOF) {
                 break;
             }
-            SSH_LOG(SSH_LOG_INFO, "Invalid moduli entry line %zu", line);
+            SSH_LOG(SSH_LOG_DEBUG, "Invalid moduli entry line %zu", line);
             do {
                 firstbyte = getc(moduli);
             } while(firstbyte != '\n' && firstbyte != EOF);
@@ -473,17 +473,17 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
         }
     }
     if (*best_size != 0) {
-        SSH_LOG(SSH_LOG_INFO,
+        SSH_LOG(SSH_LOG_DEBUG,
                 "Selected %zu bits modulus out of %zu candidates in %zu lines",
                 *best_size,
                 best_nlines - 1,
                 line);
     } else {
-        SSH_LOG(SSH_LOG_WARNING,
-                "No moduli found for [%lu:%lu:%lu]",
-                (long)pmin,
-                (long)pn,
-                (long)pmax);
+        SSH_LOG(SSH_LOG_DEBUG,
+                "No moduli found for [%" PRIu32 ":%" PRIu32 ":%" PRIu32 "]",
+                pmin,
+                pn,
+                pmax);
     }
 
     return SSH_OK;
@@ -526,7 +526,7 @@ static int ssh_retrieve_dhgroup(char *moduli_file,
 
     if (moduli == NULL) {
         char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-        SSH_LOG(SSH_LOG_WARNING,
+        SSH_LOG(SSH_LOG_DEBUG,
                 "Unable to open moduli file: %s",
                 ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
                 return ssh_fallback_group(pmax, p, g);
@@ -621,16 +621,15 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
         ssh_set_error_invalid(session);
         goto error;
     }
-    SSH_LOG(SSH_LOG_INFO, "dh-gex: DHGEX_REQUEST[%lu:%lu:%lu]",
-            (long)pmin, (long)pn, (long)pmax);
+    SSH_LOG(SSH_LOG_DEBUG, "dh-gex: DHGEX_REQUEST[%" PRIu32 ":%" PRIu32 ":%" PRIu32 "]", pmin, pn, pmax);
 
     if (pmin > pn || pn > pmax || pn > DH_PMAX || pmax < DH_PMIN) {
         ssh_set_error(session,
                       SSH_FATAL,
-                      "Invalid dh-gex arguments [%lu:%lu:%lu]",
-                      (long)pmin,
-                      (long)pn,
-                      (long)pmax);
+                      "Invalid dh-gex arguments [%" PRIu32 ":%" PRIu32 ":%" PRIu32 "]",
+                      pmin,
+                      pn,
+                      pmax);
         goto error;
     }
     session->next_crypto->dh_pmin = pmin;
@@ -644,7 +643,7 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
             pn = pmin;
         }
     }
-    rc = ssh_retrieve_dhgroup(session->opts.moduli_file,
+    rc = ssh_retrieve_dhgroup(session->server_opts.moduli_file,
                               pmin,
                               pn,
                               pmax,
@@ -654,10 +653,10 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request)
     if (rc == SSH_ERROR) {
         ssh_set_error(session,
                       SSH_FATAL,
-                      "Couldn't find DH group for [%lu:%lu:%lu]",
-                      (long)pmin,
-                      (long)pn,
-                      (long)pmax);
+                      "Couldn't find DH group for [%" PRIu32 ":%" PRIu32 ":%" PRIu32 "]",
+                      pmin,
+                      pn,
+                      pmax);
         goto error;
     }
     rc = ssh_dh_set_parameters(session->next_crypto->dh_ctx,

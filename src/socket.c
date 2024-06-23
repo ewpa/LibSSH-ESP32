@@ -37,17 +37,6 @@ struct sockaddr_un {
   char sun_path[UNIX_PATH_MAX];
 };
 #endif
-#if _MSC_VER >= 1400
-#include <io.h>
-#undef open
-#define open _open
-#undef close
-#define close _close
-#undef read
-#define read _read
-#undef write
-#define write _write
-#endif /* _MSC_VER */
 #else /* _WIN32 */
 #include <fcntl.h>
 #include <sys/types.h>
@@ -495,13 +484,13 @@ void ssh_socket_close(ssh_socket s)
         while (waitpid(pid, &status, 0) == -1) {
             if (errno != EINTR) {
                 char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-                SSH_LOG(SSH_LOG_WARN, "waitpid failed: %s",
+                SSH_LOG(SSH_LOG_TRACE, "waitpid failed: %s",
                         ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
                 return;
             }
         }
         if (!WIFEXITED(status)) {
-            SSH_LOG(SSH_LOG_WARN, "Proxy command exited abnormally");
+            SSH_LOG(SSH_LOG_TRACE, "Proxy command exited abnormally");
             return;
         }
         SSH_LOG(SSH_LOG_TRACE, "Proxy command returned %d", WEXITSTATUS(status));
@@ -869,8 +858,6 @@ int ssh_socket_set_blocking(socket_t fd)
  * @param bind_addr address to bind to, or NULL for default.
  * @returns SSH_OK socket is being connected.
  * @returns SSH_ERROR error while connecting to remote host.
- * @bug It only tries connecting to one of the available AI's
- * which is problematic for hosts having DNS fail-over.
  */
 int ssh_socket_connect(ssh_socket s,
                        const char *host,
@@ -885,7 +872,7 @@ int ssh_socket_connect(ssh_socket s,
         return SSH_ERROR;
     }
     fd = ssh_connect_host_nonblocking(s->session, host, bind_addr, port);
-    SSH_LOG(SSH_LOG_PROTOCOL, "Nonblocking connection socket: %d", fd);
+    SSH_LOG(SSH_LOG_DEBUG, "Nonblocking connection socket: %d", fd);
     if (fd == SSH_INVALID_SOCKET) {
         return SSH_ERROR;
     }
@@ -913,7 +900,7 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
     /* Prepare /dev/null socket for the stderr redirection */
     devnull = open("/dev/null", O_WRONLY);
     if (devnull == -1) {
-        SSH_LOG(SSH_LOG_WARNING, "Failed to open /dev/null");
+        SSH_LOG(SSH_LOG_TRACE, "Failed to open /dev/null");
         exit(1);
     }
 
@@ -980,7 +967,7 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
         return SSH_ERROR;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Executing proxycommand '%s'", command);
+    SSH_LOG(SSH_LOG_DEBUG, "Executing proxycommand '%s'", command);
     pid = fork();
     if (pid == 0) {
         ssh_execute_command(command, pair[0], pair[0]);
@@ -988,7 +975,7 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
     }
     s->proxy_pid = pid;
     close(pair[0]);
-    SSH_LOG(SSH_LOG_PROTOCOL, "ProxyCommand connection pipe: [%d,%d]",pair[0],pair[1]);
+    SSH_LOG(SSH_LOG_DEBUG, "ProxyCommand connection pipe: [%d,%d]",pair[0],pair[1]);
     ssh_socket_set_fd(s, pair[1]);
     s->fd_is_socket = 0;
     h = ssh_socket_get_poll_handle(s);

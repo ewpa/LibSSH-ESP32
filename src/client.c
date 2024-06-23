@@ -73,7 +73,7 @@ static void socket_callback_connected(int code, int errno_code, void *user)
 		return;
 	}
 
-	SSH_LOG(SSH_LOG_RARE,"Socket connection callback: %d (%d)",code, errno_code);
+	SSH_LOG(SSH_LOG_TRACE,"Socket connection callback: %d (%d)",code, errno_code);
 	if(code == SSH_SOCKET_CONNECTED_OK)
 		session->session_state=SSH_SESSION_STATE_SOCKET_CONNECTED;
 	else {
@@ -185,13 +185,13 @@ int ssh_send_banner(ssh_session session, int server)
     int rc = SSH_ERROR;
 
     if (server == 1) {
-        if (session->opts.custombanner == NULL){
+        if (session->server_opts.custombanner == NULL) {
             session->serverbanner = strdup(banner);
             if (session->serverbanner == NULL) {
                 goto end;
             }
         } else {
-            len = strlen(session->opts.custombanner);
+            len = strlen(session->server_opts.custombanner);
             session->serverbanner = malloc(len + 8 + 1);
             if(session->serverbanner == NULL) {
                 goto end;
@@ -199,7 +199,7 @@ int ssh_send_banner(ssh_session session, int server)
             snprintf(session->serverbanner,
                      len + 8 + 1,
                      "SSH-2.0-%s",
-                     session->opts.custombanner);
+                     session->server_opts.custombanner);
         }
 
         snprintf(buffer,
@@ -410,8 +410,7 @@ static void ssh_client_connection_callback(ssh_session session)
             goto error;
         }
         set_status(session, 0.4f);
-        SSH_LOG(SSH_LOG_PROTOCOL,
-                "SSH server banner: %s", session->serverbanner);
+        SSH_LOG(SSH_LOG_DEBUG, "SSH server banner: %s", session->serverbanner);
 
         /* Here we analyze the different protocols the server allows. */
         rc = ssh_analyze_banner(session, 0);
@@ -469,10 +468,11 @@ static void ssh_client_connection_callback(ssh_session session)
         if (session->dh_handshake_state == DH_STATE_FINISHED) {
             set_status(session, 1.0f);
             session->connected = 1;
-            if (session->flags & SSH_SESSION_FLAG_AUTHENTICATED)
+            if (session->flags & SSH_SESSION_FLAG_AUTHENTICATED) {
                 session->session_state = SSH_SESSION_STATE_AUTHENTICATED;
-            else
-                session->session_state=SSH_SESSION_STATE_AUTHENTICATING;
+            } else {
+                session->session_state = SSH_SESSION_STATE_AUTHENTICATING;
+            }
         }
         break;
     case SSH_SESSION_STATE_AUTHENTICATING:
@@ -486,10 +486,8 @@ static void ssh_client_connection_callback(ssh_session session)
 
     return;
 error:
-    ssh_socket_close(session->socket);
-    session->alive = 0;
-    session->session_state = SSH_SESSION_STATE_ERROR;
-
+    ssh_session_socket_close(session);
+    SSH_LOG(SSH_LOG_WARN, "%s", ssh_get_error(session));
 }
 
 /** @internal
@@ -574,7 +572,7 @@ int ssh_connect(ssh_session session)
         return SSH_ERROR;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL,
+    SSH_LOG(SSH_LOG_DEBUG,
             "libssh %s, using threading %s",
             ssh_copyright(),
             ssh_threads_get_type());
@@ -609,7 +607,7 @@ int ssh_connect(ssh_session session)
     set_status(session, 0.2f);
 
     session->alive = 1;
-    SSH_LOG(SSH_LOG_PROTOCOL,
+    SSH_LOG(SSH_LOG_DEBUG,
             "Socket connecting, now waiting for the callbacks to work");
 
 pending:
@@ -700,6 +698,28 @@ int ssh_get_openssh_version(ssh_session session)
 
     return session->openssh;
 }
+
+/**
+ * @brief Most SSH connections will only ever request a single session, but an
+ * attacker may abuse a running ssh client to surreptitiously open
+ * additional sessions under their control. OpenSSH provides a global
+ * request "no-more-sessions@openssh.com" to mitigate this attack.
+ *
+ * @param[in]  session  The SSH session to use.
+ *
+ * @returns             SSH_OK on success, SSH_ERROR on error.
+ * @returns             SSH_AGAIN, if the session is in nonblocking mode,
+ *                      and call must be done again.
+ */
+int ssh_request_no_more_sessions(ssh_session session)
+{
+    if (session == NULL) {
+        return SSH_ERROR;
+    }
+
+    return ssh_global_request(session, "no-more-sessions@openssh.com", NULL, 1);
+}
+
 /**
  * @brief Add disconnect message when ssh_session is disconnected
  * To add a disconnect message to give peer a better hint.
@@ -776,10 +796,7 @@ ssh_disconnect(ssh_session session)
         }
 
         ssh_packet_send(session);
-        /* Do not close the socket, if the fd was set via options. */
-        if (session->opts.fd == SSH_INVALID_SOCKET) {
-            ssh_socket_close(session->socket);
-        }
+        ssh_session_socket_close(session);
     }
 
 error:
@@ -851,7 +868,7 @@ error:
  */
 const char *ssh_copyright(void)
 {
-    return SSH_STRINGIFY(LIBSSH_VERSION) " (c) 2003-2023 "
+    return SSH_STRINGIFY(LIBSSH_VERSION) " (c) 2003-2024 "
            "Aris Adamantiadis, Andreas Schneider "
            "and libssh contributors. "
            "Distributed under the LGPL, please refer to COPYING "

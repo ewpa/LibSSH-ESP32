@@ -108,6 +108,8 @@ ssh_session ssh_new(void)
     session->opts.fd = -1;
     session->opts.compressionlevel = 7;
     session->opts.nodelay = 0;
+    session->opts.identities_only = false;
+    session->opts.control_master = SSH_CONTROL_MASTER_NO;
 
     session->opts.flags = SSH_OPT_FLAG_PASSWORD_AUTH |
                           SSH_OPT_FLAG_PUBKEY_AUTH |
@@ -124,6 +126,17 @@ ssh_session ssh_new(void)
     if (session->opts.identity_non_exp == NULL) {
         goto err;
     }
+
+    session->opts.certificate = ssh_list_new();
+    if (session->opts.certificate == NULL) {
+        goto err;
+    }
+    session->opts.certificate_non_exp = ssh_list_new();
+    if (session->opts.certificate_non_exp == NULL) {
+        goto err;
+    }
+    /* the default certificates are loaded automatically from the default
+     * identities later */
 
     id = strdup("%d/id_ed25519");
     if (id == NULL) {
@@ -154,17 +167,6 @@ ssh_session ssh_new(void)
     if (rc == SSH_ERROR) {
         goto err;
     }
-
-#ifdef HAVE_DSA
-    id = strdup("%d/id_dsa");
-    if (id == NULL) {
-        goto err;
-    }
-    rc = ssh_list_append(session->opts.identity_non_exp, id);
-    if (rc == SSH_ERROR) {
-        goto err;
-    }
-#endif
 
     /* Explicitly initialize states */
     session->session_state = SSH_SESSION_STATE_NONE;
@@ -246,12 +248,8 @@ void ssh_free(ssh_session session)
   crypto_free(session->current_crypto);
   crypto_free(session->next_crypto);
 
-#ifndef _WIN32
   ssh_agent_free(session->agent);
-#endif /* _WIN32 */
 
-  ssh_key_free(session->srv.dsa_key);
-  session->srv.dsa_key = NULL;
   ssh_key_free(session->srv.rsa_key);
   session->srv.rsa_key = NULL;
   ssh_key_free(session->srv.ecdsa_key);
@@ -301,15 +299,35 @@ void ssh_free(ssh_session session)
       ssh_list_free(session->opts.identity_non_exp);
   }
 
+    if (session->opts.certificate) {
+        char *cert = NULL;
+
+        for (cert = ssh_list_pop_head(char *, session->opts.certificate);
+             cert != NULL;
+             cert = ssh_list_pop_head(char *, session->opts.certificate)) {
+            SAFE_FREE(cert);
+        }
+        ssh_list_free(session->opts.certificate);
+    }
+
+    if (session->opts.certificate_non_exp) {
+        char *cert = NULL;
+
+        for (cert = ssh_list_pop_head(char *, session->opts.certificate_non_exp);
+             cert != NULL;
+             cert = ssh_list_pop_head(char *, session->opts.certificate_non_exp)) {
+            SAFE_FREE(cert);
+        }
+        ssh_list_free(session->opts.certificate_non_exp);
+    }
+
     while ((b = ssh_list_pop_head(struct ssh_buffer_struct *,
                                   session->out_queue)) != NULL) {
         SSH_BUFFER_FREE(b);
     }
     ssh_list_free(session->out_queue);
 
-#ifndef _WIN32
-  ssh_agent_state_free (session->agent_state);
-#endif
+  ssh_agent_state_free(session->agent_state);
   session->agent_state = NULL;
 
   SAFE_FREE(session->auth.auto_state);
@@ -321,8 +339,6 @@ void ssh_free(ssh_session session)
 
   SAFE_FREE(session->opts.agent_socket);
   SAFE_FREE(session->opts.bindaddr);
-  SAFE_FREE(session->opts.custombanner);
-  SAFE_FREE(session->opts.moduli_file);
   SAFE_FREE(session->opts.username);
   SAFE_FREE(session->opts.host);
   SAFE_FREE(session->opts.sshdir);
@@ -332,12 +348,18 @@ void ssh_free(ssh_session session)
   SAFE_FREE(session->opts.gss_server_identity);
   SAFE_FREE(session->opts.gss_client_identity);
   SAFE_FREE(session->opts.pubkey_accepted_types);
+  SAFE_FREE(session->opts.control_path);
 
   for (i = 0; i < SSH_KEX_METHODS; i++) {
       if (session->opts.wanted_methods[i]) {
           SAFE_FREE(session->opts.wanted_methods[i]);
       }
   }
+
+  SAFE_FREE(session->server_opts.custombanner);
+  SAFE_FREE(session->server_opts.moduli_file);
+
+  _ssh_remove_legacy_log_cb();
 
   /* burn connection, it could contain sensitive data */
   explicit_bzero(session, sizeof(struct ssh_session_struct));
@@ -477,20 +499,36 @@ const char* ssh_get_hmac_out(ssh_session session) {
 }
 
 /**
+ * @internal
+ * @brief Close the connection socket if it is a socket created by us.
+ * Does not close the sockets provided by the user through options API.
+ */
+void
+ssh_session_socket_close(ssh_session session)
+{
+    if (session->opts.fd == SSH_INVALID_SOCKET) {
+        ssh_socket_close(session->socket);
+    }
+    session->alive = 0;
+    session->session_state = SSH_SESSION_STATE_ERROR;
+}
+
+/**
  * @brief Disconnect impolitely from a remote host by closing the socket.
  *
  * Suitable if you forked and want to destroy this session.
  *
  * @param[in]  session  The SSH session to disconnect.
  */
-void ssh_silent_disconnect(ssh_session session) {
-  if (session == NULL) {
-    return;
-  }
+void
+ssh_silent_disconnect(ssh_session session)
+{
+    if (session == NULL) {
+        return;
+    }
 
-  ssh_socket_close(session->socket);
-  session->alive = 0;
-  ssh_disconnect(session);
+    ssh_session_socket_close(session);
+    ssh_disconnect(session);
 }
 
 /**
@@ -670,8 +708,12 @@ int ssh_handle_packets(ssh_session session, int timeout)
     ssh_poll_add_events(spoll, POLLIN);
     ctx = ssh_poll_get_ctx(spoll);
 
-    if (!ctx) {
+    if (ctx == NULL) {
         ctx = ssh_poll_get_default_ctx(session);
+        if (ctx == NULL) {
+            ssh_set_error_oom(session);
+            return SSH_ERROR;
+        }
         ssh_poll_ctx_add(ctx, spoll);
     }
 
@@ -1003,8 +1045,8 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
 {
     ssh_key pubkey = NULL;
     ssh_string pubkey_blob = NULL;
-    MD5CTX ctx;
-    unsigned char *h;
+    MD5CTX ctx = NULL;
+    unsigned char *h = NULL;
     int rc;
 
     if (session == NULL || hash == NULL) {
@@ -1041,11 +1083,13 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
 
     h = calloc(MD5_DIGEST_LEN, sizeof(unsigned char));
     if (h == NULL) {
+        SSH_STRING_FREE(pubkey_blob);
         return SSH_ERROR;
     }
 
     ctx = md5_init();
     if (ctx == NULL) {
+        SSH_STRING_FREE(pubkey_blob);
         SAFE_FREE(h);
         return SSH_ERROR;
     }
@@ -1054,6 +1098,7 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
                     ssh_string_data(pubkey_blob),
                     ssh_string_len(pubkey_blob));
     if (rc != SSH_OK) {
+        SSH_STRING_FREE(pubkey_blob);
         md5_ctx_free(ctx);
         SAFE_FREE(h);
         return rc;
@@ -1237,8 +1282,8 @@ int ssh_get_publickey_hash(const ssh_key key,
 
             /* In FIPS mode, we cannot use MD5 */
             if (ssh_fips_mode()) {
-                SSH_LOG(SSH_LOG_WARN, "In FIPS mode MD5 is not allowed."
-                                      "Try using SSH_PUBLICKEY_HASH_SHA256");
+                SSH_LOG(SSH_LOG_TRACE, "In FIPS mode MD5 is not allowed."
+                                       "Try using SSH_PUBLICKEY_HASH_SHA256");
                 rc = SSH_ERROR;
                 goto out;
             }

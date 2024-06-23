@@ -21,6 +21,21 @@
 #ifndef MISC_H_
 #define MISC_H_
 
+#ifdef _WIN32
+
+# ifdef _MSC_VER
+#  ifndef _SSIZE_T_DEFINED
+#   undef ssize_t
+#   include <BaseTsd.h>
+    typedef _W64 SSIZE_T ssize_t;
+#   define _SSIZE_T_DEFINED
+#  endif /* _SSIZE_T_DEFINED */
+# endif /* _MSC_VER */
+
+#else
+#include <sys/types.h>
+#endif /* _WIN32 */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -90,8 +105,6 @@ void ssh_timestamp_init(struct ssh_timestamp *ts);
 int ssh_timeout_elapsed(struct ssh_timestamp *ts, int timeout);
 int ssh_timeout_update(struct ssh_timestamp *ts, int timeout);
 
-int ssh_match_group(const char *group, const char *object);
-
 void uint64_inc(unsigned char *counter);
 
 void ssh_log_hexdump(const char *descr, const unsigned char *what, size_t len);
@@ -104,7 +117,11 @@ int ssh_tmpname(char *name);
 
 char *ssh_strreplace(const char *src, const char *pattern, const char *repl);
 
+ssize_t ssh_readn(int fd, void *buf, size_t nbytes);
+ssize_t ssh_writen(int fd, const void *buf, size_t nbytes);
+
 int ssh_check_hostname_syntax(const char *hostname);
+int ssh_check_username_syntax(const char *username);
 
 #ifdef __cplusplus
 }
