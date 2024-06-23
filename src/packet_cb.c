@@ -115,6 +115,18 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys){
       goto error;
   }
 
+  if (session->flags & SSH_SESSION_FLAG_KEX_STRICT) {
+      /* reset packet sequence number when running in strict kex mode */
+      session->recv_seq = 0;
+      /* Check that we aren't tainted */
+      if (session->flags & SSH_SESSION_FLAG_KEX_TAINTED) {
+          ssh_set_error(session,
+                        SSH_FATAL,
+                        "Received unexpected packets in strict KEX mode.");
+          goto error;
+      }
+  }
+
   if(session->server){
     /* server things are done in server.c */
     session->dh_handshake_state=DH_STATE_FINISHED;

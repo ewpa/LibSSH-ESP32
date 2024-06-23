@@ -663,6 +663,10 @@ int ssh_handle_packets(ssh_session session, int timeout)
     }
 
     spoll = ssh_socket_get_poll_handle(session->socket);
+    if (spoll == NULL) {
+        ssh_set_error_oom(session);
+        return SSH_ERROR;
+    }
     ssh_poll_add_events(spoll, POLLIN);
     ctx = ssh_poll_get_ctx(spoll);
 
@@ -1020,7 +1024,18 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
     *hash = NULL;
     if (session->current_crypto == NULL ||
         session->current_crypto->server_pubkey == NULL) {
-        ssh_set_error(session,SSH_FATAL,"No current cryptographic context");
+        ssh_set_error(session, SSH_FATAL, "No current cryptographic context");
+        return SSH_ERROR;
+    }
+
+    rc = ssh_get_server_publickey(session, &pubkey);
+    if (rc != SSH_OK) {
+        return SSH_ERROR;
+    }
+
+    rc = ssh_pki_export_pubkey_blob(pubkey, &pubkey_blob);
+    ssh_key_free(pubkey);
+    if (rc != SSH_OK) {
         return SSH_ERROR;
     }
 
@@ -1035,24 +1050,20 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash)
         return SSH_ERROR;
     }
 
-    rc = ssh_get_server_publickey(session, &pubkey);
+    rc = md5_update_esp32_port(ctx,
+                    ssh_string_data(pubkey_blob),
+                    ssh_string_len(pubkey_blob));
     if (rc != SSH_OK) {
-        md5_final(h, ctx);
+        md5_ctx_free(ctx);
         SAFE_FREE(h);
-        return SSH_ERROR;
+        return rc;
     }
-
-    rc = ssh_pki_export_pubkey_blob(pubkey, &pubkey_blob);
-    ssh_key_free(pubkey);
-    if (rc != SSH_OK) {
-        md5_final(h, ctx);
-        SAFE_FREE(h);
-        return SSH_ERROR;
-    }
-
-    md5_update_esp32_port(ctx, ssh_string_data(pubkey_blob), ssh_string_len(pubkey_blob));
     SSH_STRING_FREE(pubkey_blob);
-    md5_final(h, ctx);
+    rc = md5_final(h, ctx);
+    if (rc != SSH_OK) {
+        SAFE_FREE(h);
+        return rc;
+    }
 
     *hash = h;
 
@@ -1173,8 +1184,17 @@ int ssh_get_publickey_hash(const ssh_key key,
                 goto out;
             }
 
-            sha1_update_esp32_port(ctx, ssh_string_data(blob), ssh_string_len(blob));
-            sha1_final(h, ctx);
+            rc = sha1_update_esp32_port(ctx, ssh_string_data(blob), ssh_string_len(blob));
+            if (rc != SSH_OK) {
+                free(h);
+                sha1_ctx_free(ctx);
+                goto out;
+            }
+            rc = sha1_final(h, ctx);
+            if (rc != SSH_OK) {
+                free(h);
+                goto out;
+            }
 
             *hlen = SHA_DIGEST_LEN;
         }
@@ -1196,8 +1216,17 @@ int ssh_get_publickey_hash(const ssh_key key,
                 goto out;
             }
 
-            sha256_update(ctx, ssh_string_data(blob), ssh_string_len(blob));
-            sha256_final(h, ctx);
+            rc = sha256_update(ctx, ssh_string_data(blob), ssh_string_len(blob));
+            if (rc != SSH_OK) {
+                free(h);
+                sha256_ctx_free(ctx);
+                goto out;
+            }
+            rc = sha256_final(h, ctx);
+            if (rc != SSH_OK) {
+                free(h);
+                goto out;
+            }
 
             *hlen = SHA256_DIGEST_LEN;
         }
@@ -1227,8 +1256,17 @@ int ssh_get_publickey_hash(const ssh_key key,
                 goto out;
             }
 
-            md5_update_esp32_port(ctx, ssh_string_data(blob), ssh_string_len(blob));
-            md5_final(h, ctx);
+            rc = md5_update_esp32_port(ctx, ssh_string_data(blob), ssh_string_len(blob));
+            if (rc != SSH_OK) {
+                free(h);
+                md5_ctx_free(ctx);
+                goto out;
+            }
+            rc = md5_final(h, ctx);
+            if (rc != SSH_OK) {
+                free(h);
+                goto out;
+            }
 
             *hlen = MD5_DIGEST_LEN;
         }

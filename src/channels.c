@@ -3527,9 +3527,15 @@ int ssh_channel_select(ssh_channel *readchans, ssh_channel *writechans,
     firstround=0;
   } while(1);
 
-  memcpy(readchans, rchans, (count_ptrs(rchans) + 1) * sizeof(ssh_channel ));
-  memcpy(writechans, wchans, (count_ptrs(wchans) + 1) * sizeof(ssh_channel ));
-  memcpy(exceptchans, echans, (count_ptrs(echans) + 1) * sizeof(ssh_channel ));
+  if (readchans != &dummy) {
+      memcpy(readchans, rchans, (count_ptrs(rchans) + 1) * sizeof(ssh_channel));
+  }
+  if (writechans != &dummy) {
+      memcpy(writechans, wchans, (count_ptrs(wchans) + 1) * sizeof(ssh_channel));
+  }
+  if (exceptchans != &dummy) {
+      memcpy(exceptchans, echans, (count_ptrs(echans) + 1) * sizeof(ssh_channel));
+  }
   SAFE_FREE(rchans);
   SAFE_FREE(wchans);
   SAFE_FREE(echans);

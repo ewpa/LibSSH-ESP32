@@ -136,7 +136,7 @@ static int getai(const char *host, int port, struct addrinfo **ai)
 #endif
     }
 
-    if (ssh_is_ipaddr(host)) {
+    if (ssh_is_ipaddr(host) == 1) {
         /* this is an IP address */
         SSH_LOG(SSH_LOG_PACKET, "host %s matches an IP address", host);
         hints.ai_flags |= AI_NUMERICHOST;

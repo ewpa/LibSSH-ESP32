@@ -41,7 +41,6 @@ typedef mbedtls_md_context_t *SHA384CTX;
 typedef mbedtls_md_context_t *SHA512CTX;
 typedef mbedtls_md_context_t *MD5CTX;
 typedef mbedtls_md_context_t *HMACCTX;
-typedef mbedtls_md_context_t *EVPCTX;
 
 #define SHA_DIGEST_LENGTH 20
 #define SHA_DIGEST_LEN SHA_DIGEST_LENGTH

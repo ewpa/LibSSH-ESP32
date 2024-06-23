@@ -81,6 +81,12 @@ enum ssh_pending_call_e {
  * sending it twice during key exchange to simplify the state machine. */
 #define SSH_SESSION_FLAG_KEXINIT_SENT 4
 
+/* The current SSH2 session implements the "strict KEX" feature and should behave
+ * differently on SSH2_MSG_NEWKEYS. */
+#define SSH_SESSION_FLAG_KEX_STRICT 0x0010
+/* Unexpected packets have been sent while the session was still unencrypted */
+#define SSH_SESSION_FLAG_KEX_TAINTED 0x0020
+
 /* codes to use with ssh_handle_packets*() */
 /* Infinite timeout */
 #define SSH_TIMEOUT_INFINITE -1

@@ -188,6 +188,9 @@
 
 /* RFC 8308 */
 #define KEX_EXTENSION_CLIENT "ext-info-c"
+/* Strict kex mitigation against CVE-2023-48795 */
+#define KEX_STRICT_CLIENT "kex-strict-c-v00@openssh.com"
+#define KEX_STRICT_SERVER "kex-strict-s-v00@openssh.com"
 
 /* Allowed algorithms in FIPS mode */
 #define FIPS_ALLOWED_CIPHERS "aes256-gcm@openssh.com,"\
@@ -516,6 +519,27 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit)
                     session->first_kex_follows_guess_wrong ? "wrong" : "right");
     }
 
+    /*
+     * handle the "strict KEX" feature. If supported by peer, then set up the
+     * flag and verify packet sequence numbers.
+     */
+    if (server_kex) {
+        ok = ssh_match_group(crypto->client_kex.methods[SSH_KEX],
+                             KEX_STRICT_CLIENT);
+        if (ok) {
+            SSH_LOG(SSH_LOG_DEBUG, "Client supports strict kex, enabling.");
+            session->flags |= SSH_SESSION_FLAG_KEX_STRICT;
+        }
+    } else {
+        /* client kex */
+        ok = ssh_match_group(crypto->server_kex.methods[SSH_KEX],
+                             KEX_STRICT_SERVER);
+        if (ok) {
+            SSH_LOG(SSH_LOG_DEBUG, "Server supports strict kex, enabling.");
+            session->flags |= SSH_SESSION_FLAG_KEX_STRICT;
+        }
+    }
+
     if (server_kex) {
         /*
          * If client sent a ext-info-c message in the kex list, it supports
@@ -739,11 +763,8 @@ int ssh_set_client_kex(ssh_session session)
 {
     struct ssh_kex_struct *client = &session->next_crypto->client_kex;
     const char *wanted;
-    char *kex = NULL;
-    char *kex_tmp = NULL;
     int ok;
     int i;
-    size_t kex_len, len;
 
     /* Skip if already set, for example for the rekey or when we do the guessing
      * it could have been already used to make some protocol decisions. */
@@ -792,23 +813,52 @@ int ssh_set_client_kex(ssh_session session)
         return SSH_OK;
     }
 
-    /* Here we append  ext-info-c  to the list of kex algorithms */
-    kex = client->methods[SSH_KEX];
+    ok = ssh_kex_append_extensions(session, client);
+    if (ok != SSH_OK){
+        return ok;
+    }
+
+    return SSH_OK;
+}
+
+int ssh_kex_append_extensions(ssh_session session, struct ssh_kex_struct *pkex)
+{
+    char *kex = NULL;
+    char *kex_tmp = NULL;
+    size_t kex_len, len;
+
+    /* Here we append ext-info-c and kex-strict-c-v00@openssh.com for client
+     * and kex-strict-s-v00@openssh.com for server to the list of kex algorithms
+     */
+    kex = pkex->methods[SSH_KEX];
     len = strlen(kex);
-    if (len + strlen(KEX_EXTENSION_CLIENT) + 2 < len) {
+    if (session->server) {
+        /* Comma, nul byte */
+        kex_len = len + 1 + strlen(KEX_STRICT_SERVER) + 1;
+    } else {
+        /* Comma, comma, nul byte */
+        kex_len = len + 1 + strlen(KEX_EXTENSION_CLIENT) + 1 +
+                  strlen(KEX_STRICT_CLIENT) + 1;
+    }
+    if (kex_len >= MAX_PACKET_LEN) {
         /* Overflow */
         return SSH_ERROR;
     }
-    kex_len = len + strlen(KEX_EXTENSION_CLIENT) + 2; /* comma, NULL */
     kex_tmp = realloc(kex, kex_len);
     if (kex_tmp == NULL) {
-        free(kex);
         ssh_set_error_oom(session);
         return SSH_ERROR;
     }
-    snprintf(kex_tmp + len, kex_len - len, ",%s", KEX_EXTENSION_CLIENT);
-    client->methods[SSH_KEX] = kex_tmp;
-
+    if (session->server){
+        snprintf(kex_tmp + len, kex_len - len, ",%s", KEX_STRICT_SERVER);
+    } else {
+        snprintf(kex_tmp + len,
+                 kex_len - len,
+                 ",%s,%s",
+                 KEX_EXTENSION_CLIENT,
+                 KEX_STRICT_CLIENT);
+    }
+    pkex->methods[SSH_KEX] = kex_tmp;
     return SSH_OK;
 }
 
@@ -911,11 +961,19 @@ int ssh_kex_select_methods (ssh_session session)
     enum ssh_key_exchange_e kex_type;
     int i;
 
-    /* Here we should drop the  ext-info-c  from the list so we avoid matching.
+    /* Here we should drop the extensions from the list so we avoid matching.
      * it. We added it to the end, so we can just truncate the string here */
-    ext_start = strstr(client->methods[SSH_KEX], ","KEX_EXTENSION_CLIENT);
-    if (ext_start != NULL) {
-        ext_start[0] = '\0';
+    if (session->client) {
+        ext_start = strstr(client->methods[SSH_KEX], "," KEX_EXTENSION_CLIENT);
+        if (ext_start != NULL) {
+            ext_start[0] = '\0';
+        }
+    }
+    if (session->server) {
+        ext_start = strstr(server->methods[SSH_KEX], "," KEX_STRICT_SERVER);
+        if (ext_start != NULL) {
+            ext_start[0] = '\0';
+        }
     }
 
     for (i = 0; i < SSH_KEX_METHODS; i++) {
