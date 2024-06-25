@@ -331,7 +331,7 @@ get_address_family(const char *address)
     rv = getaddrinfo(address, NULL, &hints, &ai);
     if (rv != 0) {
         SSH_LOG(SSH_LOG_TRACE,
-                "Couldn't get address information - getaddrinfo() failed: %s",
+                "Couldn't get address information - getaddrinfo() failed: %d",
                 rv);
         goto out;
     }
