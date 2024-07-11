@@ -307,34 +307,8 @@ ssh_config_match(char *value, const char *pattern, bool negate)
     return result;
 }
 
-#ifdef _WIN32
-static int
-ssh_match_exec(ssh_session session, const char *command, bool negate)
-{
-    (void) session;
-    (void) command;
-    (void) negate;
-
-    SSH_LOG(SSH_LOG_TRACE, "Unsupported 'exec' command on Windows '%s'",
-            command);
-    return 0;
-}
-#else /* _WIN32 */
-
-#ifdef ESP32
-static int
-ssh_match_exec(ssh_session session, const char *command, bool negate)
-{
-    (void) session;
-    (void) command;
-    (void) negate;
-
-    SSH_LOG(SSH_LOG_TRACE, "Unsupported 'exec' command on ESP32 '%s'",
-            command);
-    return 0;
-}
-#else /* ESP32 */
-
+#ifdef WITH_EXEC
+/* FIXME reuse the ssh_execute_command() from socket.c */
 static int
 ssh_exec_shell(char *cmd)
 {
@@ -447,8 +421,20 @@ ssh_match_exec(ssh_session session, const char *command, bool negate)
     free(cmd);
     return result;
 }
-#endif /* ESP32 */
-#endif  /* _WIN32 */
+#else
+static int
+ssh_match_exec(ssh_session session, const char *command, bool negate)
+{
+    (void)session;
+    (void)command;
+    (void)negate;
+
+    SSH_LOG(SSH_LOG_TRACE,
+            "Unsupported 'exec' command on Windows '%s'",
+            command);
+    return 0;
+}
+#endif /* WITH_EXEC */
 
 /* @brief: Parse the ProxyJump configuration line and if parsing,
  * stores the result in the configuration option

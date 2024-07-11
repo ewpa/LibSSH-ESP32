@@ -266,7 +266,7 @@ int ssh_scp_close(ssh_scp scp)
          */
         while (!ssh_channel_is_eof(scp->channel)) {
             rc = ssh_channel_read(scp->channel, buffer, sizeof(buffer), 0);
-            if (rc == SSH_ERROR || rc == 0) {
+            if (rc == SSH_ERROR || rc == SSH_AGAIN || rc == 0) {
                 break;
             }
         }
@@ -603,6 +603,12 @@ int ssh_scp_response(ssh_scp scp, char **response)
 
     rc = ssh_channel_read(scp->channel, &code, 1, 0);
     if (rc == SSH_ERROR) {
+        scp->state = SSH_SCP_ERROR;
+        return SSH_ERROR;
+    }
+    if (rc == SSH_AGAIN) {
+        ssh_set_error(scp->session, SSH_FATAL, "SCP: ssh_channel_read timeout");
+        scp->state = SSH_SCP_ERROR;
         return SSH_ERROR;
     }
 
@@ -756,6 +762,14 @@ int ssh_scp_read_string(ssh_scp scp, char *buffer, size_t len)
         if (err == 0) {
             ssh_set_error(scp->session, SSH_FATAL,
                           "End of file while reading string");
+            err = SSH_ERROR;
+            break;
+        }
+
+        if (err == SSH_AGAIN) {
+            ssh_set_error(scp->session,
+                          SSH_FATAL,
+                          "SCP: ssh_channel_read timeout");
             err = SSH_ERROR;
             break;
         }
@@ -1027,12 +1041,16 @@ int ssh_scp_read(ssh_scp scp, void *buffer, size_t size)
     }
 
     rc = ssh_channel_read(scp->channel, buffer, size, 0);
-    if (rc != SSH_ERROR) {
-        scp->processed += rc;
-    } else {
+    if (rc == SSH_ERROR) {
         scp->state = SSH_SCP_ERROR;
         return SSH_ERROR;
     }
+    if (rc == SSH_AGAIN) {
+        ssh_set_error(scp->session, SSH_FATAL, "SCP: ssh_channel_read timeout");
+        scp->state = SSH_SCP_ERROR;
+        return SSH_ERROR;
+    }
+    scp->processed += rc;
 
     /* Check if we arrived at end of file */
     if (scp->processed == scp->filelen) {

@@ -1205,12 +1205,15 @@ ssh_public_key ssh_pki_convert_key_to_publickey(const ssh_key key)
     pub->type = tmp->type;
     pub->type_c = tmp->type_c;
 
-#ifndef HAVE_LIBCRYPTO
-    pub->rsa_pub = tmp->rsa;
-    tmp->rsa = NULL;
-#else
+#if defined(HAVE_LIBMBEDCRYPTO)
+    pub->rsa_pub = tmp->pk;
+    tmp->pk = NULL;
+#elif defined(HAVE_LIBCRYPTO)
     pub->key_pub = tmp->key;
     tmp->key = NULL;
+#else
+    pub->rsa_pub = tmp->rsa;
+    tmp->rsa = NULL;
 #endif /* HAVE_LIBCRYPTO */
 
     ssh_key_free(tmp);
@@ -1229,10 +1232,12 @@ ssh_private_key ssh_pki_convert_key_to_privatekey(const ssh_key key)
     }
 
     privkey->type = key->type;
-#ifndef HAVE_LIBCRYPTO
-    privkey->rsa_priv = key->rsa;
-#else
+#if defined(HAVE_LIBMBEDCRYPTO)
+    privkey->rsa_priv = key->pk;
+#elif defined(HAVE_LIBCRYPTO)
     privkey->key_priv = key->key;
+#else
+    privkey->rsa_priv = key->rsa;
 #endif /* HAVE_LIBCRYPTO */
 
     return privkey;

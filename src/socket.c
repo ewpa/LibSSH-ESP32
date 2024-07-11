@@ -881,7 +881,7 @@ int ssh_socket_connect(ssh_socket s,
     return SSH_OK;
 }
 
-#ifndef _WIN32
+#ifdef WITH_EXEC
 /**
  * @internal
  * @brief executes a command and redirect input and outputs
@@ -910,7 +910,7 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
      */
     shell = getenv("SHELL");
     if (shell == NULL || shell[0] == '\0') {
-        /* Fall back to the /bin/sh only if the bash is not available. But there are 
+        /* Fall back to the /bin/sh only if the bash is not available. But there are
          * issues with dash or whatever people tend to link to /bin/sh */
         rc = access("/bin/bash", 0);
         if (rc != 0) {
@@ -949,7 +949,6 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
  * @returns SSH_OK socket is being connected.
  * @returns SSH_ERROR error while executing the command.
  */
-
 int
 ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
 {
@@ -989,8 +988,6 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
 
     return SSH_OK;
 }
-
 #endif /* ESP32 */
-
-#endif /* _WIN32 */
+#endif /* WITH_EXEC */
 /** @} */

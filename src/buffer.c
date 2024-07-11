@@ -919,10 +919,11 @@ static int ssh_buffer_pack_allocate_va(struct ssh_buffer_struct *buffer,
  *                      SSH_ERROR on error
  * @see ssh_buffer_add_format() for format list values.
  */
-int ssh_buffer_pack_va(struct ssh_buffer_struct *buffer,
-                       const char *format,
-                       size_t argc,
-                       va_list ap)
+static int
+ssh_buffer_pack_va(struct ssh_buffer_struct *buffer,
+                   const char *format,
+                   size_t argc,
+                   va_list ap)
 {
     int rc = SSH_ERROR;
     const char *p;

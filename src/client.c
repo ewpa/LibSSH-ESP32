@@ -589,11 +589,16 @@ int ssh_connect(ssh_session session)
         session->session_state = SSH_SESSION_STATE_SOCKET_CONNECTED;
         ssh_socket_set_fd(session->socket, session->opts.fd);
         ret = SSH_OK;
-#ifndef _WIN32
-    /*} else if (session->opts.ProxyCommand != NULL) {
+    } else if (session->opts.ProxyCommand != NULL) {
+#ifdef WITH_EXEC
         ret = ssh_socket_connect_proxycommand(session->socket,
-                session->opts.ProxyCommand);*/
-#endif
+                session->opts.ProxyCommand);
+#else
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "The libssh is built without support for proxy commands.");
+        ret = SSH_ERROR;
+#endif /* WITH_EXEC */
     } else {
         ret = ssh_socket_connect(session->socket,
                                  session->opts.host,

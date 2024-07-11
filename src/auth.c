@@ -1693,18 +1693,22 @@ int ssh_userauth_agent_pubkey(ssh_session session,
     key->type = publickey->type;
     key->type_c = ssh_key_type_to_char(key->type);
     key->flags = SSH_KEY_FLAG_PUBLIC;
-#ifndef HAVE_LIBCRYPTO
-    key->rsa = publickey->rsa_pub;
-#else
+#if defined(HAVE_LIBMBEDCRYPTO)
+    key->pk = publickey->rsa_pub;
+#elif defined(HAVE_LIBCRYPTO)
     key->key = publickey->key_pub;
+#else
+    key->rsa = publickey->rsa_pub;
 #endif /* HAVE_LIBCRYPTO */
 
     rc = ssh_userauth_agent_publickey(session, username, key);
 
-#ifndef HAVE_LIBCRYPTO
-    key->rsa = NULL;
-#else
+#if defined(HAVE_LIBMBEDCRYPTO)
+    key->pk = NULL;
+#elif defined(HAVE_LIBCRYPTO)
     key->key = NULL;
+#else
+    key->rsa = NULL;
 #endif /* HAVE_LIBCRYPTO */
     ssh_key_free(key);
 

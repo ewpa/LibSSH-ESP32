@@ -2927,7 +2927,6 @@ error:
     return rc;
 }
 
-
 /**
  * @brief Read data from a channel into a buffer.
  *
@@ -2941,8 +2940,8 @@ error:
  *
  * @param is_stderr     A boolean value to mark reading from the stderr stream.
  *
- * @return              The number of bytes read, 0 on end of file or SSH_ERROR
- *                      on error.
+ * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
+ *                      timeout and SSH_ERROR on error.
  * @deprecated          Please use ssh_channel_read instead
  * @warning             This function doesn't work in nonblocking/timeout mode
  * @see ssh_channel_read
@@ -3034,8 +3033,6 @@ static int ssh_channel_read_termination(void *s)
     return 0;
 }
 
-/* TODO: FIXME Fix the blocking behaviours */
-
 /**
  * @brief Reads data from a channel.
  *
@@ -3047,9 +3044,8 @@ static int ssh_channel_read_termination(void *s)
  *
  * @param[in]  is_stderr A boolean value to mark reading from the stderr flow.
  *
- * @return              The number of bytes read, 0 on end of file or SSH_ERROR
- *                      on error. In nonblocking mode it can return 0 if no data
- *                      is available or SSH_AGAIN.
+ * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
+ *                      timeout and SSH_ERROR on error.
  *
  * @warning This function may return less than count bytes of data, and won't
  *          block until count bytes have been read.
@@ -3077,9 +3073,8 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_std
  * @param[in]  timeout_ms  A timeout in milliseconds. A value of -1 means
  *                         infinite timeout.
  *
- * @return              The number of bytes read, 0 on end of file or SSH_ERROR
- *                      on error. In nonblocking mode it Can return 0 if no data
- *                      is available or SSH_AGAIN.
+ * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
+ *                      timeout, SSH_ERROR on error.
  *
  * @warning This function may return less than count bytes of data, and won't
  *          block until count bytes have been read.
@@ -3135,8 +3130,8 @@ int ssh_channel_read_timeout(ssh_channel channel,
                                       timeout_ms,
                                       ssh_channel_read_termination,
                                       &ctx);
-  if (rc == SSH_ERROR){
-    return rc;
+  if (rc == SSH_ERROR || rc == SSH_AGAIN) {
+      return rc;
   }
 
   /*
@@ -3190,8 +3185,8 @@ int ssh_channel_read_timeout(ssh_channel channel,
  *
  * @param[in]  is_stderr A boolean to select the stderr stream.
  *
- * @return              The number of bytes read (0 if nothing is available),
- *                      SSH_ERROR on error, and SSH_EOF if the channel is EOF.
+ * @return              The number of bytes read, SSH_AGAIN if nothing is
+ * available, SSH_ERROR on error, and SSH_EOF if the channel is EOF.
  *
  * @see ssh_channel_is_eof()
  */

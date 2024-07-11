@@ -60,7 +60,7 @@ struct ssh_key_struct {
     gcry_sexp_t rsa;
     gcry_sexp_t ecdsa;
 #elif defined(HAVE_LIBMBEDCRYPTO)
-    mbedtls_pk_context *rsa;
+    mbedtls_pk_context *pk;
     mbedtls_ecdsa_context *ecdsa;
 #elif defined(HAVE_LIBCRYPTO)
     /* This holds either ENGINE key for PKCS#11 support or just key in

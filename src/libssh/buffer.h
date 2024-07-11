@@ -42,10 +42,6 @@ int ssh_buffer_validate_length(struct ssh_buffer_struct *buffer, size_t len);
 
 void *ssh_buffer_allocate(struct ssh_buffer_struct *buffer, uint32_t len);
 int ssh_buffer_allocate_size(struct ssh_buffer_struct *buffer, uint32_t len);
-int ssh_buffer_pack_va(struct ssh_buffer_struct *buffer,
-                       const char *format,
-                       size_t argc,
-                       va_list ap);
 int _ssh_buffer_pack(struct ssh_buffer_struct *buffer,
                      const char *format,
                      size_t argc,

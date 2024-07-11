@@ -337,6 +337,7 @@ static void list_fingerprint(char *file)
     rc = ssh_get_publickey_hash(key, SSH_PUBLICKEY_HASH_SHA256, &hash, &hlen);
     if (rc != SSH_OK) {
         fprintf(stderr, "Failed to get key fingerprint\n");
+        ssh_key_free(key);
         return;
     }
     ssh_print_hash(SSH_PUBLICKEY_HASH_SHA256, hash, hlen);
