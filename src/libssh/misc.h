@@ -34,6 +34,7 @@
 
 #else
 #include <sys/types.h>
+#include <stdbool.h>
 #endif /* _WIN32 */
 
 #ifdef __cplusplus
@@ -63,6 +64,12 @@ struct ssh_list {
 struct ssh_iterator {
   struct ssh_iterator *next;
   const void *data;
+};
+
+struct ssh_jump_info_struct {
+    char *hostname;
+    char *username;
+    int port;
 };
 
 struct ssh_timestamp {
@@ -100,6 +107,9 @@ const void *_ssh_list_pop_head(struct ssh_list *list);
 #define ssh_list_pop_head(type, ssh_list)\
   ((type)_ssh_list_pop_head(ssh_list))
 
+#define SSH_LIST_FREE(x) \
+    do { if ((x) != NULL) { ssh_list_free(x); (x) = NULL; } } while(0)
+
 int ssh_make_milliseconds(unsigned long sec, unsigned long usec);
 void ssh_timestamp_init(struct ssh_timestamp *ts);
 int ssh_timeout_elapsed(struct ssh_timestamp *ts, int timeout);
@@ -122,6 +132,9 @@ ssize_t ssh_writen(int fd, const void *buf, size_t nbytes);
 
 int ssh_check_hostname_syntax(const char *hostname);
 int ssh_check_username_syntax(const char *username);
+
+void ssh_proxyjumps_free(struct ssh_list *proxy_jump_list);
+bool ssh_libssh_proxy_jumps(void);
 
 #ifdef __cplusplus
 }

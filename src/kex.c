@@ -351,7 +351,6 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit)
     int server_kex = session->server;
     ssh_string str = NULL;
     char *strings[SSH_KEX_METHODS] = {0};
-    char *rsa_sig_ext = NULL;
     int rc = SSH_ERROR;
     size_t len;
 
@@ -577,6 +576,7 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit)
              */
             if ((session->extensions & SSH_EXT_SIG_RSA_SHA256) &&
                 (session->extensions & SSH_EXT_SIG_RSA_SHA512)) {
+                char *rsa_sig_ext = NULL;
                 session->extensions &= ~(SSH_EXT_SIG_RSA_SHA256 | SSH_EXT_SIG_RSA_SHA512);
                 rsa_sig_ext = ssh_find_matching("rsa-sha2-512,rsa-sha2-256",
                                                 hostkeys);

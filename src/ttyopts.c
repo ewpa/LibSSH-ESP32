@@ -267,7 +267,9 @@ encode_termios_opts(struct termios *attr, unsigned char *buf, size_t buflen)
     SSH_ENCODE_LOCAL_OPT(IEXTEN)
     SSH_ENCODE_LOCAL_OPT(ECHOCTL)
     SSH_ENCODE_LOCAL_OPT(ECHOKE)
+#ifdef PENDIN
     SSH_ENCODE_LOCAL_OPT(PENDIN)
+#endif
 #undef SSH_ENCODE_LOCAL_OPT
 
 #define SSH_ENCODE_CC_OPT(opt) SSH_ENCODE_OPT(TTY_OP_##opt, attr->c_cc[opt])
@@ -319,6 +321,9 @@ encode_termios_opts(struct termios *attr, unsigned char *buf, size_t buflen)
  * This function intentionally doesn't use the \c termios structure
  * to allow it to work on Windows as well.
  *
+ * The "sane" default set is derived from the `stty sane`, but iutf8 support is
+ * added on top of that.
+ *
  * @param[out] buf      Modes will be encoded into this buffer.
  *
  * @param[in]  buflen   The length of the buffer.
@@ -343,7 +348,7 @@ encode_default_opts(unsigned char *buf, size_t buflen)
     SSH_ENCODE_OPT(TTY_OP_VQUIT, 034)
     SSH_ENCODE_OPT(TTY_OP_VERASE, 0177)
     SSH_ENCODE_OPT(TTY_OP_VKILL, 025)
-    SSH_ENCODE_OPT(TTY_OP_VEOF, 0)
+    SSH_ENCODE_OPT(TTY_OP_VEOF, 004)
     SSH_ENCODE_OPT(TTY_OP_VEOL, 0)
     SSH_ENCODE_OPT(TTY_OP_VEOL2, 0)
     SSH_ENCODE_OPT(TTY_OP_VSTART, 021)
@@ -360,7 +365,7 @@ encode_default_opts(unsigned char *buf, size_t buflen)
     SSH_ENCODE_OPT(TTY_OP_ISTRIP, 0)
     SSH_ENCODE_OPT(TTY_OP_INLCR, 0)
     SSH_ENCODE_OPT(TTY_OP_IGNCR, 0)
-    SSH_ENCODE_OPT(TTY_OP_ICRNL, 0)
+    SSH_ENCODE_OPT(TTY_OP_ICRNL, 1)
     SSH_ENCODE_OPT(TTY_OP_IUCLC, 0)
     SSH_ENCODE_OPT(TTY_OP_IXON, 1)
     SSH_ENCODE_OPT(TTY_OP_IXANY, 0)
@@ -377,12 +382,12 @@ encode_default_opts(unsigned char *buf, size_t buflen)
     SSH_ENCODE_OPT(TTY_OP_NOFLSH, 0)
     SSH_ENCODE_OPT(TTY_OP_TOSTOP, 0)
     SSH_ENCODE_OPT(TTY_OP_IEXTEN, 1)
-    SSH_ENCODE_OPT(TTY_OP_ECHOCTL, 0)
+    SSH_ENCODE_OPT(TTY_OP_ECHOCTL, 1)
     SSH_ENCODE_OPT(TTY_OP_ECHOKE, 1)
     SSH_ENCODE_OPT(TTY_OP_PENDIN, 0)
     SSH_ENCODE_OPT(TTY_OP_OPOST, 1)
     SSH_ENCODE_OPT(TTY_OP_OLCUC, 0)
-    SSH_ENCODE_OPT(TTY_OP_ONLCR, 0)
+    SSH_ENCODE_OPT(TTY_OP_ONLCR, 1)
     SSH_ENCODE_OPT(TTY_OP_OCRNL, 0)
     SSH_ENCODE_OPT(TTY_OP_ONOCR, 0)
     SSH_ENCODE_OPT(TTY_OP_ONLRET, 0)

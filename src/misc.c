@@ -1975,7 +1975,7 @@ char *ssh_strreplace(const char *src, const char *pattern, const char *replace)
  */
 char *ssh_strerror(int err_num, char *buf, size_t buflen)
 {
-#if defined(__linux__) && defined(__GLIBC__) && defined(_GNU_SOURCE)
+#if ((defined(__linux__) && defined(__GLIBC__)) || defined(__CYGWIN__)) && defined(_GNU_SOURCE)
     /* GNU extension on Linux */
     return strerror_r(err_num, buf, buflen);
 #else
@@ -1993,7 +1993,7 @@ char *ssh_strerror(int err_num, char *buf, size_t buflen)
         buf[0] = '\0';
     }
     return buf;
-#endif /* defined(__linux__) && defined(__GLIBC__) && defined(_GNU_SOURCE) */
+#endif /* ((defined(__linux__) && defined(__GLIBC__)) || defined(__CYGWIN__)) && defined(_GNU_SOURCE) */
 }
 
 /**
@@ -2093,7 +2093,7 @@ ssize_t ssh_writen(int fd, const void *buf, size_t nbytes)
                               ((const char *)buf) + total_bytes_written,
                               nbytes - total_bytes_written);
         if (bytes_written == -1) {
-            if(errno == EINTR) {
+            if (errno == EINTR) {
                 /* Ignoring errors due to signal interrupts */
                 continue;
             }
@@ -2204,4 +2204,46 @@ int ssh_check_username_syntax(const char *username)
 
     return SSH_OK;
 }
+
+/**
+ * @brief Free proxy jump list
+ *
+ * Frees everything in a proxy jump list, but doesn't free the ssh_list
+ *
+ * @param proxy_jump_list
+ *
+ */
+void
+ssh_proxyjumps_free(struct ssh_list *proxy_jump_list)
+{
+    struct ssh_jump_info_struct *jump = NULL;
+
+    for (jump =
+             ssh_list_pop_head(struct ssh_jump_info_struct *, proxy_jump_list);
+         jump != NULL;
+         jump = ssh_list_pop_head(struct ssh_jump_info_struct *,
+                                  proxy_jump_list)) {
+        SAFE_FREE(jump->hostname);
+        SAFE_FREE(jump->username);
+        SAFE_FREE(jump);
+    }
+}
+
+/**
+ * @brief Check if libssh proxy jumps is enabled
+ *
+ * If env variable OPENSSH_PROXYJUMP is set to 1 then proxyjump will be
+ * through the OpenSSH binary.
+ *
+ * @return false if OPENSSH_PROXYJUMP=1
+ *         true otherwise
+ */
+bool
+ssh_libssh_proxy_jumps(void)
+{
+    const char *t = getenv("OPENSSH_PROXYJUMP");
+
+    return !(t != NULL && t[0] == '1');
+}
+
 /** @} */

@@ -450,10 +450,9 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
         proposed_size = size + 1;
         if (proposed_size != *best_size &&
             dhgroup_better_size(pmin, pn, pmax, *best_size, proposed_size)) {
-            best_nlines = 0;
+            best_nlines = 1;
             *best_size = proposed_size;
-        }
-        if (proposed_size == *best_size) {
+        } else if (proposed_size == *best_size) {
             best_nlines++;
         }
 

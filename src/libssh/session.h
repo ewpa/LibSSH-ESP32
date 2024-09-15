@@ -140,6 +140,7 @@ struct ssh_session_struct {
     uint32_t send_seq;
     uint32_t recv_seq;
     struct ssh_timestamp last_rekey_time;
+    bool proxy_root;
 
     int connected;
     /* !=0 when the user got a session handle */
@@ -239,6 +240,8 @@ struct ssh_session_struct {
         struct ssh_list *identity_non_exp;
         struct ssh_list *certificate;
         struct ssh_list *certificate_non_exp;
+        struct ssh_list *proxy_jumps;
+        struct ssh_list *proxy_jumps_user_cb;
         char *username;
         char *host;
         char *bindaddr; /* bind the client to an ip addr */

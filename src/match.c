@@ -46,6 +46,11 @@
 #include <sys/socket.h>
 #endif
 
+/* for systems without IPv6 support matching should still work */
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
 #include "libssh/priv.h"
 
 #define MAX_MATCH_RECURSION 16

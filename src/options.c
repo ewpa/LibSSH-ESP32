@@ -512,6 +512,20 @@ int ssh_options_set_algo(ssh_session session,
  *                Set the command to be executed in order to connect to
  *                server (const char *).
  *
+ *              - SSH_OPTIONS_PROXYJUMP:
+ *                Set the comma separated jump hosts in order to connect to
+ *                server (const char *). Set to "none" to disable.
+ *                Example:
+ *                  "alice@127.0.0.1:5555,bob@127.0.0.2"
+ *
+ *                If environment variable OPENSSH_PROXYJUMP is set to 1 then proxyjump will be
+ *                handled by the OpenSSH binary.
+ *
+ *              - SSH_OPTIONS_PROXYJUMP_CB_LIST_APPEND:
+ *                Append the callbacks struct for a jump in order of
+ *                SSH_OPTIONS_PROXYJUMP. Append as many times
+ *                as the number of jumps (struct ssh_jump_callbacks_struct *).
+ *
  *              - SSH_OPTIONS_GSSAPI_SERVER_IDENTITY
  *                Set it to specify the GSSAPI server identity that libssh
  *                should expect when connecting to the server (const char *).
@@ -637,6 +651,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
     unsigned int u;
     int rc;
     char **wanted_methods = session->opts.wanted_methods;
+    struct ssh_jump_callbacks_struct *j = NULL;
 
     if (session == NULL) {
         return -1;
@@ -1120,6 +1135,32 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                     }
                     session->opts.ProxyCommand = q;
                     session->opts.exp_flags &= ~SSH_OPT_EXP_FLAG_PROXYCOMMAND;
+                }
+            }
+            break;
+        case SSH_OPTIONS_PROXYJUMP:
+            v = value;
+            if (v == NULL || v[0] == '\0') {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                ssh_proxyjumps_free(session->opts.proxy_jumps);
+                rc = ssh_config_parse_proxy_jump(session, v, true);
+                if (rc != SSH_OK) {
+                    return SSH_ERROR;
+                }
+            }
+            break;
+        case SSH_OPTIONS_PROXYJUMP_CB_LIST_APPEND:
+            j = (struct ssh_jump_callbacks_struct *)value;
+            if (j == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                rc = ssh_list_prepend(session->opts.proxy_jumps_user_cb, j);
+                if (rc != SSH_OK) {
+                    ssh_set_error_oom(session);
+                    return SSH_ERROR;
                 }
             }
             break;
