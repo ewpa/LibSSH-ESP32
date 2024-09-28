@@ -49,6 +49,11 @@ char *ssh_remove_duplicates(const char *list);
 
 char *ssh_append_without_duplicates(const char *list,
                                     const char *appended_list);
+char *ssh_prefix_without_duplicates(const char *list,
+                                    const char *prefixed_list);
+char *ssh_remove_all_matching(const char *list,
+                              const char *remove_list);
+
 #ifdef __cplusplus
 }
 #endif

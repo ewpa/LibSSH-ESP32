@@ -117,15 +117,6 @@ int server_set_kex(ssh_session session)
                  ",%s", session->srv.ecdsa_key->type_c);
     }
 #endif
-#ifdef HAVE_DSA
-    if (session->srv.dsa_key != NULL) {
-        len = strlen(hostkeys);
-        keytype = ssh_key_type(session->srv.dsa_key);
-
-        snprintf(hostkeys + len, sizeof(hostkeys) - len,
-                 ",%s", ssh_key_type_to_char(keytype));
-    }
-#endif
     if (session->srv.rsa_key != NULL) {
         /* We support also the SHA2 variants */
         len = strlen(hostkeys);
@@ -164,7 +155,8 @@ int server_set_kex(ssh_session session)
 
     rc = ssh_options_set_algo(session,
                               SSH_HOSTKEYS,
-                              kept);
+                              kept,
+                              &session->opts.wanted_methods[SSH_HOSTKEYS]);
     SAFE_FREE(kept);
     if (rc < 0) {
         return -1;
@@ -291,9 +283,6 @@ ssh_get_key_params(ssh_session session,
     int rc;
 
     switch(session->srv.hostkey) {
-      case SSH_KEYTYPE_DSS:
-        *privkey = session->srv.dsa_key;
-        break;
       case SSH_KEYTYPE_RSA:
         *privkey = session->srv.rsa_key;
         break;
@@ -359,15 +348,15 @@ static void ssh_server_connection_callback(ssh_session session)
             goto error;
         }
         set_status(session, 0.4f);
-        SSH_LOG(SSH_LOG_PROTOCOL,
+        SSH_LOG(SSH_LOG_DEBUG,
                 "SSH client banner: %s", session->clientbanner);
 
         /* Here we analyze the different protocols the server allows. */
         rc = ssh_analyze_banner(session, 1);
         if (rc < 0) {
             ssh_set_error(session, SSH_FATAL,
-                          "No version of SSH protocol usable (banner: %s)",
-                          session->clientbanner);
+                    "No version of SSH protocol usable (banner: %s)",
+                    session->clientbanner);
             goto error;
         }
 
@@ -377,7 +366,8 @@ static void ssh_server_connection_callback(ssh_session session)
         ssh_packet_set_default_callbacks(session);
         set_status(session, 0.5f);
         session->session_state = SSH_SESSION_STATE_INITIAL_KEX;
-        if (ssh_send_kex(session) < 0) {
+        rc = ssh_send_kex(session);
+        if (rc < 0) {
             goto error;
         }
         break;
@@ -387,18 +377,25 @@ static void ssh_server_connection_callback(ssh_session session)
     case SSH_SESSION_STATE_KEXINIT_RECEIVED:
         set_status(session, 0.6f);
         if ((session->flags & SSH_SESSION_FLAG_KEXINIT_SENT) == 0) {
-            if (server_set_kex(session) == SSH_ERROR)
+            rc = server_set_kex(session);
+            if (rc == SSH_ERROR) {
                 goto error;
+            }
             /* We are in a rekeying, so we need to send the server kex */
-            if (ssh_send_kex(session) < 0)
+            rc = ssh_send_kex(session);
+            if (rc < 0) {
                 goto error;
+            }
         }
         ssh_list_kex(&session->next_crypto->client_kex); // log client kex
-        if (ssh_kex_select_methods(session) < 0) {
+        rc = ssh_kex_select_methods(session);
+        if (rc < 0) {
             goto error;
         }
-        if (crypt_set_algorithms_server(session) == SSH_ERROR)
+        rc = crypt_set_algorithms_server(session);
+        if (rc == SSH_ERROR) {
             goto error;
+        }
         set_status(session, 0.8f);
         session->session_state = SSH_SESSION_STATE_DH;
         break;
@@ -692,8 +689,7 @@ static int ssh_message_channel_request_reply_default(ssh_message msg) {
     channel = msg->channel_request.channel->remote_channel;
 
     SSH_LOG(SSH_LOG_PACKET,
-        "Sending a default channel_request denied to channel %ld",
-        (long)channel);
+        "Sending a default channel_request denied to channel %" PRIu32, channel);
 
     rc = ssh_buffer_pack(msg->session->out_buffer,
                          "bd",
@@ -969,9 +965,8 @@ int ssh_message_auth_interactive_request(ssh_message msg, const char *name,
 
   /* fill in the kbdint structure */
   if (msg->session->kbdint == NULL) {
-    SSH_LOG(SSH_LOG_PROTOCOL, "Warning: Got a "
-                                        "keyboard-interactive response but it "
-                                        "seems we didn't send the request.");
+    SSH_LOG(SSH_LOG_DEBUG, "Warning: Got a keyboard-interactive response "
+                           "but it seems we didn't send the request.");
 
     msg->session->kbdint = ssh_kbdint_new();
     if (msg->session->kbdint == NULL) {
@@ -1077,13 +1072,13 @@ int ssh_auth_reply_success(ssh_session session, int partial)
 
     crypto = ssh_packet_get_current_crypto(session, SSH_DIRECTION_OUT);
     if (crypto != NULL && crypto->delayed_compress_out) {
-        SSH_LOG(SSH_LOG_PROTOCOL, "Enabling delayed compression OUT");
+        SSH_LOG(SSH_LOG_DEBUG, "Enabling delayed compression OUT");
         crypto->do_compress_out = 1;
     }
 
     crypto = ssh_packet_get_current_crypto(session, SSH_DIRECTION_IN);
     if (crypto != NULL && crypto->delayed_compress_in) {
-        SSH_LOG(SSH_LOG_PROTOCOL, "Enabling delayed compression IN");
+        SSH_LOG(SSH_LOG_DEBUG, "Enabling delayed compression IN");
         crypto->do_compress_in = 1;
     }
     return r;

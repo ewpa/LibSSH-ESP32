@@ -70,7 +70,7 @@ bignum ssh_make_string_bn(ssh_string string)
 
 #ifdef DEBUG_CRYPTO
     SSH_LOG(SSH_LOG_TRACE,
-            "Importing a %zu bits, %zu bytes object ...\n",
+            "Importing a %zu bits, %zu bytes object ...",
             len * 8, len);
 #endif /* DEBUG_CRYPTO */
 
@@ -88,11 +88,5 @@ void ssh_print_bignum(const char *name, const_bignum num)
     }
     SSH_LOG(SSH_LOG_DEBUG, "%s value: %s", name,
             (hex == NULL) ? "(null)" : (char *)hex);
-#ifdef HAVE_LIBGCRYPT
-    SAFE_FREE(hex);
-#elif defined HAVE_LIBCRYPTO
-    OPENSSL_free(hex);
-#elif defined HAVE_LIBMBEDCRYPTO
-    SAFE_FREE(hex);
-#endif
+    ssh_crypto_free(hex);
 }

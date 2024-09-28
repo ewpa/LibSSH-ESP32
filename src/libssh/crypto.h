@@ -86,9 +86,9 @@ enum ssh_key_exchange_e {
 
 enum ssh_cipher_e {
     SSH_NO_CIPHER=0,
-#ifdef WITH_BLOWFISH_CIPHER
+#ifdef HAVE_BLOWFISH
     SSH_BLOWFISH_CBC,
-#endif /* WITH_BLOWFISH_CIPHER */
+#endif /* HAVE_BLOWFISH */
     SSH_3DES_CBC,
     SSH_AES128_CBC,
     SSH_AES192_CBC,
@@ -111,11 +111,7 @@ struct ssh_crypto_struct {
 #endif /* WITH_GEX */
 #ifdef HAVE_ECDH
 #ifdef HAVE_OPENSSL_ECC
-/* TODO Change to new API when the OpenSSL will support export of uncompressed EC keys
- * https://github.com/openssl/openssl/pull/16624
- * #if OPENSSL_VERSION_NUMBER < 0x30000000L
- */
-#if 1
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     EC_KEY *ecdh_privkey;
 #else
     EVP_PKEY *ecdh_privkey;
@@ -227,7 +223,7 @@ int sshkdf_derive_key(struct ssh_crypto_struct *crypto,
                       size_t requested_len);
 
 int secure_memcmp(const void *s1, const void *s2, size_t n);
-#ifdef HAVE_LIBCRYPTO
+#if defined(HAVE_LIBCRYPTO) && !defined(WITH_PKCS11_PROVIDER)
 ENGINE *pki_get_engine(void);
 #endif /* HAVE_LIBCRYPTO */
 

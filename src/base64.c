@@ -57,119 +57,120 @@ static int get_equals(char *string);
  * @returns A buffer containing the decoded string, NULL if something went
  *          wrong (e.g. incorrect char).
  */
-ssh_buffer base64_to_bin(const char *source) {
-  ssh_buffer buffer = NULL;
-  unsigned char block[3];
-  char *base64;
-  char *ptr;
-  size_t len;
-  int equals;
+ssh_buffer base64_to_bin(const char *source)
+{
+    ssh_buffer buffer = NULL;
+    unsigned char block[3];
+    char *base64 = NULL;
+    char *ptr = NULL;
+    size_t len;
+    int equals;
 
-  base64 = strdup(source);
-  if (base64 == NULL) {
-    return NULL;
-  }
-  ptr = base64;
-
-  /* Get the number of equals signs, which mirrors the padding */
-  equals = get_equals(ptr);
-  if (equals > 2) {
-    SAFE_FREE(base64);
-    return NULL;
-  }
-
-  buffer = ssh_buffer_new();
-  if (buffer == NULL) {
-    SAFE_FREE(base64);
-    return NULL;
-  }
-  /*
-   * The base64 buffer often contains sensitive data. Make sure we don't leak
-   * sensitive data
-   */
-  ssh_buffer_set_secure(buffer);
-
-  len = strlen(ptr);
-  while (len > 4) {
-    if (_base64_to_bin(block, ptr, 3) < 0) {
-      goto error;
+    base64 = strdup(source);
+    if (base64 == NULL) {
+        return NULL;
     }
-    if (ssh_buffer_add_data(buffer, block, 3) < 0) {
-      goto error;
-    }
-    len -= 4;
-    ptr += 4;
-  }
+    ptr = base64;
 
-  /*
-   * Depending on the number of bytes resting, there are 3 possibilities
-   * from the RFC.
-   */
-  switch (len) {
+    /* Get the number of equals signs, which mirrors the padding */
+    equals = get_equals(ptr);
+    if (equals > 2) {
+        SAFE_FREE(base64);
+        return NULL;
+    }
+
+    buffer = ssh_buffer_new();
+    if (buffer == NULL) {
+        SAFE_FREE(base64);
+        return NULL;
+    }
+    /*
+     * The base64 buffer often contains sensitive data. Make sure we don't leak
+     * sensitive data
+     */
+    ssh_buffer_set_secure(buffer);
+
+    len = strlen(ptr);
+    while (len > 4) {
+        if (_base64_to_bin(block, ptr, 3) < 0) {
+            goto error;
+        }
+        if (ssh_buffer_add_data(buffer, block, 3) < 0) {
+            goto error;
+        }
+        len -= 4;
+        ptr += 4;
+    }
+
+    /*
+     * Depending on the number of bytes resting, there are 3 possibilities
+     * from the RFC.
+     */
+    switch (len) {
     /*
      * (1) The final quantum of encoding input is an integral multiple of
      *     24 bits. Here, the final unit of encoded output will be an integral
      *     multiple of 4 characters with no "=" padding
      */
     case 4:
-      if (equals != 0) {
-        goto error;
-      }
-      if (_base64_to_bin(block, ptr, 3) < 0) {
-        goto error;
-      }
-      if (ssh_buffer_add_data(buffer, block, 3) < 0) {
-        goto error;
-      }
-      SAFE_FREE(base64);
+        if (equals != 0) {
+            goto error;
+        }
+        if (_base64_to_bin(block, ptr, 3) < 0) {
+            goto error;
+        }
+        if (ssh_buffer_add_data(buffer, block, 3) < 0) {
+            goto error;
+        }
+        SAFE_FREE(base64);
 
-      return buffer;
+        return buffer;
     /*
      * (2) The final quantum of encoding input is exactly 8 bits; here, the
      *     final unit of encoded output will be two characters followed by
      *     two "=" padding characters.
      */
     case 2:
-      if (equals != 2){
-        goto error;
-      }
+        if (equals != 2) {
+            goto error;
+        }
 
-      if (_base64_to_bin(block, ptr, 1) < 0) {
-        goto error;
-      }
-      if (ssh_buffer_add_data(buffer, block, 1) < 0) {
-        goto error;
-      }
-      SAFE_FREE(base64);
+        if (_base64_to_bin(block, ptr, 1) < 0) {
+            goto error;
+        }
+        if (ssh_buffer_add_data(buffer, block, 1) < 0) {
+            goto error;
+        }
+        SAFE_FREE(base64);
 
-      return buffer;
+        return buffer;
     /*
      * The final quantum of encoding input is exactly 16 bits. Here, the final
      * unit of encoded output will be three characters followed by one "="
      * padding character.
      */
     case 3:
-      if (equals != 1) {
-        goto error;
-      }
-      if (_base64_to_bin(block, ptr, 2) < 0) {
-        goto error;
-      }
-      if (ssh_buffer_add_data(buffer,block,2) < 0) {
-        goto error;
-      }
-      SAFE_FREE(base64);
+        if (equals != 1) {
+            goto error;
+        }
+        if (_base64_to_bin(block, ptr, 2) < 0) {
+            goto error;
+        }
+        if (ssh_buffer_add_data(buffer, block, 2) < 0) {
+            goto error;
+        }
+        SAFE_FREE(base64);
 
-      return buffer;
+        return buffer;
     default:
-      /* 4,3,2 are the only padding size allowed */
-      goto error;
-  }
+        /* 4,3,2 are the only padding size allowed */
+        goto error;
+    }
 
 error:
-  SAFE_FREE(base64);
-  SSH_BUFFER_FREE(buffer);
-  return NULL;
+    SAFE_FREE(base64);
+    SSH_BUFFER_FREE(buffer);
+    return NULL;
 }
 
 #define BLOCK(letter, n) do {ptr = strchr((const char *)alphabet, source[n]); \
@@ -179,59 +180,62 @@ error:
                          } while(0)
 
 /* Returns 0 if ok, -1 if not (ie invalid char into the stuff) */
-static int to_block4(unsigned long *block, const char *source, int num) {
-  const char *ptr = NULL;
-  unsigned int i;
+static int to_block4(unsigned long *block, const char *source, int num)
+{
+    const char *ptr = NULL;
+    unsigned int i;
 
-  *block = 0;
-  if (num < 1) {
+    *block = 0;
+    if (num < 1) {
+        return 0;
+    }
+
+    BLOCK(A, 0); /* 6 bit */
+    BLOCK(B, 1); /* 12 bit */
+
+    if (num < 2) {
+        return 0;
+    }
+
+    BLOCK(C, 2); /* 18 bit */
+
+    if (num < 3) {
+        return 0;
+    }
+
+    BLOCK(D, 3); /* 24 bit */
+
     return 0;
-  }
-
-  BLOCK(A, 0); /* 6 bit */
-  BLOCK(B,1); /* 12 bit */
-
-  if (num < 2) {
-    return 0;
-  }
-
-  BLOCK(C, 2); /* 18 bit */
-
-  if (num < 3) {
-    return 0;
-  }
-
-  BLOCK(D, 3); /* 24 bit */
-
-  return 0;
 }
 
 /* num = numbers of final bytes to be decoded */
-static int _base64_to_bin(unsigned char dest[3], const char *source, int num) {
-  unsigned long block;
+static int _base64_to_bin(unsigned char dest[3], const char *source, int num)
+{
+    unsigned long block;
 
-  if (to_block4(&block, source, num) < 0) {
-    return -1;
-  }
-  dest[0] = GET_A(block);
-  dest[1] = GET_B(block);
-  dest[2] = GET_C(block);
+    if (to_block4(&block, source, num) < 0) {
+        return -1;
+    }
+    dest[0] = GET_A(block);
+    dest[1] = GET_B(block);
+    dest[2] = GET_C(block);
 
-  return 0;
+    return 0;
 }
 
 /* Count the number of "=" signs and replace them by zeroes */
-static int get_equals(char *string) {
-  char *ptr = string;
-  int num = 0;
+static int get_equals(char *string)
+{
+    char *ptr = string;
+    int num = 0;
 
-  while ((ptr=strchr(ptr,'=')) != NULL) {
-    num++;
-    *ptr = '\0';
-    ptr++;
-  }
+    while ((ptr = strchr(ptr, '=')) != NULL) {
+        num++;
+        *ptr = '\0';
+        ptr++;
+    }
 
-  return num;
+    return num;
 }
 
 /* thanks sysk for debugging my mess :) */
@@ -283,7 +287,7 @@ uint8_t *bin_to_base64(const uint8_t *source, size_t len)
     }
     ptr = base64;
 
-    while(len > 0){
+    while (len > 0) {
         _bin_to_base64(ptr, source, len > 3 ? 3 : len);
         ptr += 4;
         if (len < 3) {

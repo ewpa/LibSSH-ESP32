@@ -54,11 +54,6 @@
 #define NTDDI_VERSION 0x05010000 /* NTDDI_WINXP */
 #endif
 
-#if _MSC_VER >= 1400
-#include <io.h>
-#undef close
-#define close _close
-#endif /* _MSC_VER */
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -168,7 +163,7 @@ static int set_tcp_nodelay(socket_t socket)
 socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
                                       const char *bind_addr, int port)
 {
-    socket_t s = -1;
+    socket_t s = -1, first = -1;
     int rc;
     struct addrinfo *ai = NULL;
     struct addrinfo *itr = NULL;
@@ -258,12 +253,22 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
 
         errno = 0;
         rc = connect(s, itr->ai_addr, itr->ai_addrlen);
-        if (rc == -1 && (errno != 0) && (errno != EINPROGRESS)) {
-            ssh_set_error(session, SSH_FATAL,
-                          "Failed to connect: %s",
-                          ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
-            ssh_connect_socket_close(s);
-            s = -1;
+        if (rc == -1) {
+            if ((errno != 0) && (errno != EINPROGRESS)) {
+                ssh_set_error(session, SSH_FATAL,
+                              "Failed to connect: %s",
+                              ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+                ssh_connect_socket_close(s);
+                s = -1;
+            } else {
+                if (first == -1) {
+                    first = s;
+                } else { /* errno == EINPROGRESS */
+                    /* save only the first "working" socket */
+                    ssh_connect_socket_close(s);
+                    s = -1;
+                }
+            }
             continue;
         }
 
@@ -271,6 +276,12 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
     }
 
     freeaddrinfo(ai);
+
+    /* first let's go through all the addresses looking for immediate
+     * connection, otherwise return the first address without error or error */
+    if (s == -1) {
+        s = first;
+    }
 
     return s;
 }

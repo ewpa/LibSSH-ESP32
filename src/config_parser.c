@@ -194,6 +194,10 @@ int ssh_config_parse_uri(const char *tok,
             if (*username == NULL) {
                 goto error;
             }
+            rc = ssh_check_username_syntax(*username);
+            if (rc != SSH_OK) {
+                goto error;
+            }
         }
         tok = endp + 1;
         /* If there is second @ character, this does not look like our URI */
@@ -253,7 +257,7 @@ int ssh_config_parse_uri(const char *tok,
         /* Verify the port is valid positive number */
         port_n = strtol(endp + 1, &port_end, 10);
         if (port_n < 1 || *port_end != '\0') {
-            SSH_LOG(SSH_LOG_WARN, "Failed to parse port number."
+            SSH_LOG(SSH_LOG_TRACE, "Failed to parse port number."
                     " The value '%ld' is invalid or there are some"
                     " trailing characters: '%s'", port_n, port_end);
             goto error;

@@ -38,8 +38,6 @@ int bcrypt_pbkdf(const char *pass,
 
 #define RSA_HEADER_BEGIN "-----BEGIN RSA PRIVATE KEY-----"
 #define RSA_HEADER_END "-----END RSA PRIVATE KEY-----"
-#define DSA_HEADER_BEGIN "-----BEGIN DSA PRIVATE KEY-----"
-#define DSA_HEADER_END "-----END DSA PRIVATE KEY-----"
 #define ECDSA_HEADER_BEGIN "-----BEGIN EC PRIVATE KEY-----"
 #define ECDSA_HEADER_END "-----END EC PRIVATE KEY-----"
 #define OPENSSH_HEADER_BEGIN "-----BEGIN OPENSSH PRIVATE KEY-----"
@@ -65,7 +63,6 @@ enum ssh_digest_e ssh_key_type_to_hash(ssh_session session,
 /* SSH Key Functions */
 ssh_key pki_key_dup(const ssh_key key, int demote);
 int pki_key_generate_rsa(ssh_key key, int parameter);
-int pki_key_generate_dss(ssh_key key, int parameter);
 int pki_key_generate_ecdsa(ssh_key key, int parameter);
 int pki_key_generate_ed25519(ssh_key key);
 
@@ -91,24 +88,13 @@ int pki_import_privkey_buffer(enum ssh_keytypes_e type,
                               ssh_key *pkey);
 
 /* SSH Public Key Functions */
-int pki_pubkey_build_dss(ssh_key key,
-                         ssh_string p,
-                         ssh_string q,
-                         ssh_string g,
-                         ssh_string pubkey);
 int pki_pubkey_build_rsa(ssh_key key,
                          ssh_string e,
                          ssh_string n);
 int pki_pubkey_build_ecdsa(ssh_key key, int nid, ssh_string e);
-ssh_string pki_publickey_to_blob(const ssh_key key);
+ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type);
 
 /* SSH Private Key Functions */
-int pki_privkey_build_dss(ssh_key key,
-                          ssh_string p,
-                          ssh_string q,
-                          ssh_string g,
-                          ssh_string pubkey,
-                          ssh_string privkey);
 int pki_privkey_build_rsa(ssh_key key,
                           ssh_string n,
                           ssh_string e,
@@ -120,7 +106,6 @@ int pki_privkey_build_ecdsa(ssh_key key,
                             int nid,
                             ssh_string e,
                             ssh_string exp);
-ssh_string pki_publickey_to_blob(const ssh_key key);
 
 /* SSH Signature Functions */
 ssh_signature pki_sign_data(const ssh_key privkey,
@@ -146,15 +131,18 @@ ssh_signature pki_do_sign_hash(const ssh_key privkey,
                                const unsigned char *hash,
                                size_t hlen,
                                enum ssh_digest_e hash_type);
+#ifndef HAVE_LIBCRYPTO
 int pki_ed25519_sign(const ssh_key privkey, ssh_signature sig,
         const unsigned char *hash, size_t hlen);
 int pki_ed25519_verify(const ssh_key pubkey, ssh_signature sig,
         const unsigned char *hash, size_t hlen);
+#endif /* HAVE_LIBCRYPTO */
 int pki_ed25519_key_cmp(const ssh_key k1,
                 const ssh_key k2,
                 enum ssh_keycmp_e what);
 int pki_ed25519_key_dup(ssh_key new_key, const ssh_key key);
 int pki_ed25519_public_key_to_blob(ssh_buffer buffer, ssh_key key);
+int pki_ed25519_private_key_to_blob(ssh_buffer buffer, const ssh_key privkey);
 ssh_string pki_ed25519_signature_to_blob(ssh_signature sig);
 int pki_signature_from_ed25519_blob(ssh_signature sig, ssh_string sig_blob);
 int pki_privkey_build_ed25519(ssh_key key,

@@ -1170,8 +1170,8 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (packet_len > MAX_PACKET_LEN) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "read_packet(): Packet len too high(%lu %.4lx)",
-                              (long)packet_len, (long)packet_len);
+                              "read_packet(): Packet len too high(%" PRIu32 " %.4" PRIx32 ")",
+                              packet_len, packet_len);
                 goto error;
             }
             if (to_be_read < 0) {
@@ -1196,9 +1196,9 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                     /* give up, not enough data in buffer */
                     SSH_LOG(SSH_LOG_PACKET,
                             "packet: partial packet (read len) "
-                            "[len=%ld, receivedlen=%d, to_be_read=%ld]",
-                            (long)packet_len,
-                            (int)receivedlen,
+                            "[len=%" PRIu32 ", receivedlen=%zu, to_be_read=%ld]",
+                            packet_len,
+                            receivedlen,
                             to_be_read);
                     return 0;
                 }
@@ -1295,9 +1295,9 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
             if (padding > ssh_buffer_get_len(session->in_buffer)) {
                 ssh_set_error(session,
                               SSH_FATAL,
-                              "Invalid padding: %d (%ld left)",
+                              "Invalid padding: %d (%" PRIu32 " left)",
                               padding,
-                              (long)ssh_buffer_get_len(session->in_buffer));
+                              ssh_buffer_get_len(session->in_buffer));
                 goto error;
             }
             ssh_buffer_pass_bytes_end(session->in_buffer, padding);
@@ -1621,12 +1621,12 @@ SSH_PACKET_CALLBACK(ssh_packet_unimplemented){
 
     rc = ssh_buffer_unpack(packet, "d", &seq);
     if (rc != SSH_OK) {
-        SSH_LOG(SSH_LOG_WARNING,
+        SSH_LOG(SSH_LOG_TRACE,
                 "Could not unpack SSH_MSG_UNIMPLEMENTED packet");
     }
 
     SSH_LOG(SSH_LOG_RARE,
-            "Received SSH_MSG_UNIMPLEMENTED (sequence number %ld)",(long)seq);
+            "Received SSH_MSG_UNIMPLEMENTED (sequence number %" PRIu32 ")",seq);
 
     return SSH_PACKET_USED;
 }
@@ -1792,13 +1792,13 @@ static int packet_send2(ssh_session session)
     }
 
     SSH_LOG(SSH_LOG_PACKET,
-            "packet: wrote [type=%u, len=%lu, padding_size=%hhd, comp=%lu, "
-            "payload=%lu]",
+            "packet: wrote [type=%u, len=%" PRIu32 ", padding_size=%hhd, comp=%" PRIu32 ", "
+            "payload=%" PRIu32 "]",
             type,
-            (long)finallen,
+            finallen,
             padding_size,
-            (long)compsize,
-            (long)payloadsize);
+            compsize,
+            payloadsize);
 
     rc = ssh_buffer_reinit(session->out_buffer);
     if (rc < 0) {
@@ -1951,7 +1951,7 @@ ssh_init_rekey_state(struct ssh_session_struct *session,
                                  session->opts.rekey_data / cipher->blocksize);
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL,
+    SSH_LOG(SSH_LOG_DEBUG,
             "Set rekey after %" PRIu64 " blocks",
             cipher->max_blocks);
 }
@@ -1979,7 +1979,7 @@ ssh_packet_set_newkeys(ssh_session session,
     session->next_crypto->used |= direction;
     if (session->current_crypto != NULL) {
         if (session->current_crypto->used & direction) {
-            SSH_LOG(SSH_LOG_WARNING, "This direction isn't used anymore.");
+            SSH_LOG(SSH_LOG_TRACE, "This direction isn't used anymore.");
         }
         /* Mark the current requested direction unused */
         session->current_crypto->used &= ~direction;
@@ -2053,7 +2053,7 @@ ssh_packet_set_newkeys(ssh_session session,
     ssh_init_rekey_state(session, in_cipher);
     if (session->opts.rekey_time != 0) {
         ssh_timestamp_init(&session->last_rekey_time);
-        SSH_LOG(SSH_LOG_PROTOCOL, "Set rekey after %" PRIu32 " seconds",
+        SSH_LOG(SSH_LOG_DEBUG, "Set rekey after %" PRIu32 " seconds",
                 session->opts.rekey_time/1000);
     }
 

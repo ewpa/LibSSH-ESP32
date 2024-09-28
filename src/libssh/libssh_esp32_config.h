@@ -7,7 +7,7 @@
 #define PACKAGE "libssh"
 
 /* Version number of package */
-#define VERSION "0.10.6"
+#define VERSION "0.11.1"
 
 #define SYSCONFDIR "etc"
 #define BINARYDIR "/home/ewan/Documents/Development/Embedded/Arduino/libraries/LibSSH-ESP32/extras/port/libssh-build-local"
@@ -31,7 +31,7 @@
 #define HAVE_GLOB_H 1
 
 /* Define to 1 if you have the <valgrind/valgrind.h> header file. */
-#define HAVE_VALGRIND_VALGRIND_H 1
+/* #undef HAVE_VALGRIND_VALGRIND_H */
 
 /* Define to 1 if you have the <pty.h> header file. */
 #define HAVE_PTY_H 1
@@ -63,14 +63,14 @@
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
+/* Define to 1 if you have the <ifaddrs.h> header file. */
+// #undef HAVE_IFADDRS_H
+
 /* Define to 1 if you have the <openssl/aes.h> header file. */
 /* #undef HAVE_OPENSSL_AES_H */
 
 /* Define to 1 if you have the <wspiapi.h> header file. */
 /* #undef HAVE_WSPIAPI_H */
-
-/* Define to 1 if you have the <openssl/blowfish.h> header file. */
-/* #undef HAVE_OPENSSL_BLOWFISH_H */
 
 /* Define to 1 if you have the <openssl/des.h> header file. */
 /* #undef HAVE_OPENSSL_DES_H */
@@ -96,20 +96,8 @@
 /* Define to 1 if you have elliptic curve cryptography */
 #define HAVE_ECC 1
 
-/* Define to 1 if you have DSA */
-/* #undef HAVE_DSA */
-
-/* Define to 1 if you have gl_flags as a glob_t sturct member */
+/* Define to 1 if you have gl_flags as a glob_t struct member */
 #define HAVE_GLOB_GL_FLAGS_MEMBER 1
-
-/* Define to 1 if you have OpenSSL with Ed25519 support */
-/* #undef HAVE_OPENSSL_ED25519 */
-
-/* Define to 1 if you have OpenSSL with X25519 support */
-/* #undef HAVE_OPENSSL_X25519 */
-
-/* Define to 1 if you have OpenSSL with Poly1305 support */
-/* #undef HAVE_OPENSSL_EVP_POLY1305 */
 
 /* Define to 1 if you have gcrypt with ChaCha20/Poly1305 support */
 /* #undef HAVE_GCRYPT_CHACHA_POLY */
@@ -124,15 +112,6 @@
 
 /* Define to 1 if you have the `FIPS_mode' function. */
 /* #undef HAVE_OPENSSL_FIPS_MODE */
-
-/* Define to 1 if you have the `EVP_DigestSign' function. */
-/* #undef HAVE_OPENSSL_EVP_DIGESTSIGN */
-
-/* Define to 1 if you have the `EVP_DigestVerify' function. */
-/* #undef HAVE_OPENSSL_EVP_DIGESTVERIFY */
-
-/* Define to 1 if you have the `OPENSSL_ia32cap_loc' function. */
-/* #undef HAVE_OPENSSL_IA32CAP_LOC */
 
 /* Define to 1 if you have the `snprintf' function. */
 #define HAVE_SNPRINTF 1
@@ -206,6 +185,9 @@
 /* Define to 1 if you have the `cmocka_set_test_filter' function. */
 /* #undef HAVE_CMOCKA_SET_TEST_FILTER */
 
+/* Define to 1 if we have support for blowfish */
+/* #undef HAVE_BLOWFISH */
+
 /*************************** LIBRARIES ***************************/
 
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
@@ -257,8 +239,13 @@
 /* Define to 1 if you want to enable DH group exchange algorithms */
 #define WITH_GEX 1
 
-/* Define to 1 if you want to enable none cipher and MAC */
+/* Define to 1 if you want to enable insecure none cipher and MAC */
 /* #undef WITH_INSECURE_NONE */
+
+/* Define to 1 if you want to allow libssh to execute arbitrary commands from
+ * configuration files or options (match exec, proxy commands and OpenSSH-based
+ * proxy-jumps). */
+/* #undef WITH_EXEC */
 
 /* Define to 1 if you want to enable blowfish cipher support */
 /* #undef WITH_BLOWFISH_CIPHER */
@@ -280,6 +267,9 @@
 
 /* Define to 1 if you want to enable PKCS #11 URI support */
 /* #undef WITH_PKCS11_URI */
+
+/* Define to 1 if we want to build a support for PKCS #11 provider. */
+/* #undef WITH_PKCS11_PROVIDER */
 
 /*************************** ENDIAN *****************************/
 
@@ -361,6 +351,10 @@ enum ssh_config_opcode_e {
     SOC_PUBKEYACCEPTEDKEYTYPES,
     SOC_REKEYLIMIT,
     SOC_IDENTITYAGENT,
+    SOC_IDENTITIESONLY,
+    SOC_CONTROLMASTER,
+    SOC_CONTROLPATH,
+    SOC_CERTIFICATE,
 
     SOC_MAX /* Keep this one last in the list */
 };

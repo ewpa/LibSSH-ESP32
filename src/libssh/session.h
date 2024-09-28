@@ -71,15 +71,18 @@ enum ssh_pending_call_e {
 };
 
 /* libssh calls may block an undefined amount of time */
-#define SSH_SESSION_FLAG_BLOCKING 1
+#define SSH_SESSION_FLAG_BLOCKING 0x0001
 
 /* Client successfully authenticated */
-#define SSH_SESSION_FLAG_AUTHENTICATED 2
+#define SSH_SESSION_FLAG_AUTHENTICATED 0x0002
+
+/* Do not accept new session channels (no-more-sessions@openssh.com) */
+#define SSH_SESSION_FLAG_NO_MORE_SESSIONS 0x0004
 
 /* The KEXINIT message can be sent first by either of the parties so this flag
  * indicates that the message was already sent to make sure it is sent and avoid
  * sending it twice during key exchange to simplify the state machine. */
-#define SSH_SESSION_FLAG_KEXINIT_SENT 4
+#define SSH_SESSION_FLAG_KEXINIT_SENT 0x0008
 
 /* The current SSH2 session implements the "strict KEX" feature and should behave
  * differently on SSH2_MSG_NEWKEYS. */
@@ -109,6 +112,7 @@ enum ssh_pending_call_e {
 #define SSH_OPT_EXP_FLAG_GLOBAL_KNOWNHOSTS 0x2
 #define SSH_OPT_EXP_FLAG_PROXYCOMMAND 0x4
 #define SSH_OPT_EXP_FLAG_IDENTITY 0x8
+#define SSH_OPT_EXP_FLAG_CONTROL_PATH 0x10
 
 /* extensions flags */
 /* negotiation enabled */
@@ -136,6 +140,7 @@ struct ssh_session_struct {
     uint32_t send_seq;
     uint32_t recv_seq;
     struct ssh_timestamp last_rekey_time;
+    bool proxy_root;
 
     int connected;
     /* !=0 when the user got a session handle */
@@ -208,7 +213,6 @@ struct ssh_session_struct {
     /* server host keys */
     struct {
         ssh_key rsa_key;
-        ssh_key dsa_key;
         ssh_key ecdsa_key;
         ssh_key ed25519_key;
         /* The type of host key wanted by client */
@@ -234,6 +238,10 @@ struct ssh_session_struct {
     struct {
         struct ssh_list *identity;
         struct ssh_list *identity_non_exp;
+        struct ssh_list *certificate;
+        struct ssh_list *certificate_non_exp;
+        struct ssh_list *proxy_jumps;
+        struct ssh_list *proxy_jumps_user_cb;
         char *username;
         char *host;
         char *bindaddr; /* bind the client to an ip addr */
@@ -243,8 +251,6 @@ struct ssh_session_struct {
         char *wanted_methods[SSH_KEX_METHODS];
         char *pubkey_accepted_types;
         char *ProxyCommand;
-        char *custombanner;
-        char *moduli_file;
         char *agent_socket;
         unsigned long timeout; /* seconds */
         unsigned long timeout_usec;
@@ -263,7 +269,17 @@ struct ssh_session_struct {
         uint64_t rekey_data;
         uint32_t rekey_time;
         int rsa_min_size;
+        bool identities_only;
+        int control_master;
+        char *control_path;
     } opts;
+
+    /* server options */
+    struct {
+        char *custombanner;
+        char *moduli_file;
+    } server_opts;
+
     /* counters */
     ssh_counter socket_counter;
     ssh_counter raw_counter;

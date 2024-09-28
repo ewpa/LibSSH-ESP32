@@ -36,28 +36,29 @@ extern "C" {
 #endif
 
 enum ssh_bind_options_e {
-  SSH_BIND_OPTIONS_BINDADDR,
-  SSH_BIND_OPTIONS_BINDPORT,
-  SSH_BIND_OPTIONS_BINDPORT_STR,
-  SSH_BIND_OPTIONS_HOSTKEY,
-  SSH_BIND_OPTIONS_DSAKEY,
-  SSH_BIND_OPTIONS_RSAKEY,
-  SSH_BIND_OPTIONS_BANNER,
-  SSH_BIND_OPTIONS_LOG_VERBOSITY,
-  SSH_BIND_OPTIONS_LOG_VERBOSITY_STR,
-  SSH_BIND_OPTIONS_ECDSAKEY,
-  SSH_BIND_OPTIONS_IMPORT_KEY,
-  SSH_BIND_OPTIONS_KEY_EXCHANGE,
-  SSH_BIND_OPTIONS_CIPHERS_C_S,
-  SSH_BIND_OPTIONS_CIPHERS_S_C,
-  SSH_BIND_OPTIONS_HMAC_C_S,
-  SSH_BIND_OPTIONS_HMAC_S_C,
-  SSH_BIND_OPTIONS_CONFIG_DIR,
-  SSH_BIND_OPTIONS_PUBKEY_ACCEPTED_KEY_TYPES,
-  SSH_BIND_OPTIONS_HOSTKEY_ALGORITHMS,
-  SSH_BIND_OPTIONS_PROCESS_CONFIG,
-  SSH_BIND_OPTIONS_MODULI,
-  SSH_BIND_OPTIONS_RSA_MIN_SIZE,
+    SSH_BIND_OPTIONS_BINDADDR,
+    SSH_BIND_OPTIONS_BINDPORT,
+    SSH_BIND_OPTIONS_BINDPORT_STR,
+    SSH_BIND_OPTIONS_HOSTKEY,
+    SSH_BIND_OPTIONS_DSAKEY, /* deprecated */
+    SSH_BIND_OPTIONS_RSAKEY, /* deprecated */
+    SSH_BIND_OPTIONS_BANNER,
+    SSH_BIND_OPTIONS_LOG_VERBOSITY,
+    SSH_BIND_OPTIONS_LOG_VERBOSITY_STR,
+    SSH_BIND_OPTIONS_ECDSAKEY, /* deprecated */
+    SSH_BIND_OPTIONS_IMPORT_KEY,
+    SSH_BIND_OPTIONS_KEY_EXCHANGE,
+    SSH_BIND_OPTIONS_CIPHERS_C_S,
+    SSH_BIND_OPTIONS_CIPHERS_S_C,
+    SSH_BIND_OPTIONS_HMAC_C_S,
+    SSH_BIND_OPTIONS_HMAC_S_C,
+    SSH_BIND_OPTIONS_CONFIG_DIR,
+    SSH_BIND_OPTIONS_PUBKEY_ACCEPTED_KEY_TYPES,
+    SSH_BIND_OPTIONS_HOSTKEY_ALGORITHMS,
+    SSH_BIND_OPTIONS_PROCESS_CONFIG,
+    SSH_BIND_OPTIONS_MODULI,
+    SSH_BIND_OPTIONS_RSA_MIN_SIZE,
+    SSH_BIND_OPTIONS_IMPORT_KEY_STR,
 };
 
 typedef struct ssh_bind_struct* ssh_bind;
@@ -222,6 +223,9 @@ LIBSSH_API int ssh_server_init_kex(ssh_session session);
 /**
  * @brief Free a ssh servers bind.
  *
+ * Note that this will also free options that have been set on the bind,
+ * including keys set with SSH_BIND_OPTIONS_IMPORT_KEY.
+ *
  * @param  ssh_bind_o     The ssh server bind to free.
  */
 LIBSSH_API void ssh_bind_free(ssh_bind ssh_bind_o);
@@ -292,7 +296,7 @@ LIBSSH_API const char *ssh_message_auth_user(ssh_message msg);
  *
  * @param[in] msg       The message to get the password from.
  *
- * @return              The username or NULL if an error occurred.
+ * @return              The password or NULL if an error occurred.
  *
  * @see ssh_message_get()
  * @see ssh_message_type()

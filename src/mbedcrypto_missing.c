@@ -45,7 +45,7 @@ void ssh_mbedcry_bn_free(bignum bn)
     SAFE_FREE(bn);
 }
 
-unsigned char *ssh_mbedcry_bn2num(const_bignum num, int radix)
+char *ssh_mbedcry_bn2num(const_bignum num, int radix)
 {
     char *buf = NULL;
     size_t olen;
@@ -56,7 +56,7 @@ unsigned char *ssh_mbedcry_bn2num(const_bignum num, int radix)
         return NULL;
     }
 
-    buf = malloc(olen);
+    buf = mbedtls_calloc(1, olen);
     if (buf == NULL) {
         return NULL;
     }
@@ -67,7 +67,7 @@ unsigned char *ssh_mbedcry_bn2num(const_bignum num, int radix)
         return NULL;
     }
 
-    return (unsigned char *) buf;
+    return buf;
 }
 
 int ssh_mbedcry_rand(bignum rnd, int bits, int top, int bottom)

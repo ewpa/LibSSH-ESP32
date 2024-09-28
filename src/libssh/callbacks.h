@@ -27,6 +27,7 @@
 
 #include <libssh/libssh.h>
 #include <string.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,6 +140,26 @@ typedef ssh_channel (*ssh_channel_open_request_auth_agent_callback) (ssh_session
       void *userdata);
 
 /**
+ * @brief Handles an SSH new channel open "forwarded-tcpip" request. This
+ * happens when the server forwards an incoming TCP connection on a port it was
+ * previously requested to listen on. This is a client-side API
+ * @param session current session handler
+ * @param destination_address the address that the TCP connection connected to
+ * @param destination_port the port that the TCP connection connected to
+ * @param originator_address the originator IP address
+ * @param originator_port the originator port
+ * @param userdata Userdata to be passed to the callback function.
+ * @returns a valid ssh_channel handle if the request is to be allowed
+ * @returns NULL if the request should not be allowed
+ * @warning The channel pointer returned by this callback must be closed by the
+ * application.
+ */
+typedef ssh_channel (*ssh_channel_open_request_forwarded_tcpip_callback) (ssh_session session,
+      const char *destination_address, int destination_port,
+      const char *originator_address, int originator_port,
+      void *userdata);
+
+/**
  * The structure to replace libssh functions with appropriate callbacks.
  */
 struct ssh_callbacks_struct {
@@ -171,6 +192,11 @@ struct ssh_callbacks_struct {
   /** This function will be called when an incoming "auth-agent" request is received.
    */
   ssh_channel_open_request_auth_agent_callback channel_open_request_auth_agent_function;
+  /**
+   * This function will be called when an incoming "forwarded-tcpip"
+   * request is received.
+   */
+  ssh_channel_open_request_forwarded_tcpip_callback channel_open_request_forwarded_tcpip_function;
 };
 typedef struct ssh_callbacks_struct *ssh_callbacks;
 
@@ -257,6 +283,7 @@ typedef ssh_channel (*ssh_channel_open_request_session_callback) (ssh_session se
 
 /*
  * @brief handle the beginning of a GSSAPI authentication, server side.
+ *        Callback should select the oid and also acquire the server credential.
  * @param session current session handler
  * @param user the username of the client
  * @param n_oid number of available oids
@@ -339,6 +366,7 @@ struct ssh_server_callbacks_struct {
    */
   ssh_channel_open_request_session_callback channel_open_request_session_function;
   /** This function will be called when a new gssapi authentication is attempted.
+   * This should select the oid and acquire credential for the server.
    */
   ssh_gssapi_select_oid_callback gssapi_select_oid_function;
   /** This function will be called when a gssapi token comes in.
@@ -808,6 +836,28 @@ typedef int (*ssh_channel_write_wontblock_callback) (ssh_session session,
                                                      uint32_t bytes,
                                                      void *userdata);
 
+/**
+ * @brief SSH channel open callback. Called when a channel open succeeds or fails.
+ * @param session Current session handler
+ * @param channel the actual channel
+ * @param is_success is 1 when the open succeeds, and 0 otherwise.
+ * @param userdata Userdata to be passed to the callback function.
+ */
+typedef void (*ssh_channel_open_resp_callback) (ssh_session session,
+                                                ssh_channel channel,
+                                                bool is_success,
+                                                void *userdata);
+
+/**
+ * @brief SSH channel request response callback. Called when a response to the pending request is received.
+ * @param session Current session handler
+ * @param channel the actual channel
+ * @param userdata Userdata to be passed to the callback function.
+ */
+typedef void (*ssh_channel_request_resp_callback) (ssh_session session,
+                                                   ssh_channel channel,
+                                                   void *userdata);
+
 struct ssh_channel_callbacks_struct {
   /** DON'T SET THIS use ssh_callbacks_init() instead. */
   size_t size;
@@ -878,6 +928,14 @@ struct ssh_channel_callbacks_struct {
    * not to block.
    */
   ssh_channel_write_wontblock_callback channel_write_wontblock_function;
+  /**
+   * This functions will be called when the channel has received a channel open confirmation or failure.
+   */
+  ssh_channel_open_resp_callback channel_open_response_function;
+  /**
+   * This functions will be called when the channel has received the response to the pending request.
+   */
+  ssh_channel_request_resp_callback channel_request_response_function;
 };
 
 typedef struct ssh_channel_callbacks_struct *ssh_channel_callbacks;
@@ -1014,6 +1072,7 @@ LIBSSH_API struct ssh_threads_callbacks_struct *ssh_threads_get_pthread(void);
  * @see ssh_threads_set_callbacks
  */
 LIBSSH_API struct ssh_threads_callbacks_struct *ssh_threads_get_noop(void);
+/** @} */
 
 /**
  * @brief Set the logging callback function.
@@ -1031,7 +1090,45 @@ LIBSSH_API int ssh_set_log_callback(ssh_logging_callback cb);
  */
 LIBSSH_API ssh_logging_callback ssh_get_log_callback(void);
 
-/** @} */
+/**
+ * @brief SSH proxyjump before connection callback. Called before calling
+ * ssh_connect()
+ * @param session Jump session handler
+ * @param userdata Userdata to be passed to the callback function.
+ *
+ * @return         0 on success, < 0 on error.
+ */
+typedef int (*ssh_jump_before_connection_callback)(ssh_session session,
+                                                   void *userdata);
+
+/**
+ * @brief SSH proxyjump verify knownhost callback. Verify the host.
+ *        If not specified default function will be used.
+ * @param session Jump session handler
+ * @param userdata Userdata to be passed to the callback function.
+ *
+ * @return         0 on success, < 0 on error.
+ */
+typedef int (*ssh_jump_verify_knownhost_callback)(ssh_session session,
+                                                  void *userdata);
+
+/**
+ * @brief SSH proxyjump user authentication callback. Authenticate the user.
+ * @param session Jump session handler
+ * @param userdata Userdata to be passed to the callback function.
+ *
+ * @return         0 on success, < 0 on error.
+ */
+typedef int (*ssh_jump_authenticate_callback)(ssh_session session,
+                                              void *userdata);
+
+struct ssh_jump_callbacks_struct {
+    void *userdata;
+    ssh_jump_before_connection_callback before_connection;
+    ssh_jump_verify_knownhost_callback verify_knownhost;
+    ssh_jump_authenticate_callback authenticate;
+};
+
 #ifdef __cplusplus
 }
 #endif

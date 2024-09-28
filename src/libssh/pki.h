@@ -33,7 +33,7 @@
 #include <openssl/evp.h>
 #endif
 #include "libssh/crypto.h"
-#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_ED25519)
+#ifdef HAVE_LIBCRYPTO
 /* If using OpenSSL implementation, define the signature length which would be
  * defined in libssh/ed25519.h otherwise */
 #define ED25519_SIG_LEN 64
@@ -57,40 +57,24 @@ struct ssh_key_struct {
     const char *type_c; /* Don't free it ! it is static */
     int ecdsa_nid;
 #if defined(HAVE_LIBGCRYPT)
-    gcry_sexp_t dsa;
     gcry_sexp_t rsa;
     gcry_sexp_t ecdsa;
 #elif defined(HAVE_LIBMBEDCRYPTO)
-    mbedtls_pk_context *rsa;
+    mbedtls_pk_context *pk;
     mbedtls_ecdsa_context *ecdsa;
-    void *dsa;
 #elif defined(HAVE_LIBCRYPTO)
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-    DSA *dsa;
-    RSA *rsa;
-#endif /* OPENSSL_VERSION_NUMBER */
-/* TODO Change to new API when the OpenSSL will support export of uncompressed EC keys
- * https://github.com/openssl/openssl/pull/16624
- * Move into the #if above
- */
-# if defined(HAVE_OPENSSL_ECC)
-    EC_KEY *ecdsa;
-# else
-    void *ecdsa;
-# endif /* HAVE_OPENSSL_EC_H */
     /* This holds either ENGINE key for PKCS#11 support or just key in
-     * high-level format required by OpenSSL 3.0 */
+     * high-level format */
     EVP_PKEY *key;
-#endif /* HAVE_LIBGCRYPT */
-#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_ED25519)
     uint8_t *ed25519_pubkey;
     uint8_t *ed25519_privkey;
-#else
+#endif /* HAVE_LIBGCRYPT */
+#ifndef HAVE_LIBCRYPTO
     ed25519_pubkey *ed25519_pubkey;
     ed25519_privkey *ed25519_privkey;
-#endif
+#endif /* HAVE_LIBCRYPTO */
     ssh_string sk_application;
-    void *cert;
+    ssh_buffer cert;
     enum ssh_keytypes_e cert_type;
 };
 
@@ -99,16 +83,15 @@ struct ssh_signature_struct {
     enum ssh_digest_e hash_type;
     const char *type_c;
 #if defined(HAVE_LIBGCRYPT)
-    gcry_sexp_t dsa_sig;
     gcry_sexp_t rsa_sig;
     gcry_sexp_t ecdsa_sig;
 #elif defined(HAVE_LIBMBEDCRYPTO)
     ssh_string rsa_sig;
     struct mbedtls_ecdsa_sig ecdsa_sig;
 #endif /* HAVE_LIBGCRYPT */
-#if !defined(HAVE_LIBCRYPTO) || !defined(HAVE_OPENSSL_ED25519)
+#ifndef HAVE_LIBCRYPTO
     ed25519_signature *ed25519_sig;
-#endif
+#endif /* HAVE_LIBGCRYPT */
     ssh_string raw_sig;
 
     /* Security Key specific additions */
@@ -138,12 +121,11 @@ enum ssh_digest_e ssh_key_hash_from_name(const char *name);
     ((t) >= SSH_KEYTYPE_ECDSA_P256 && (t) <= SSH_KEYTYPE_ECDSA_P521)
 
 #define is_cert_type(kt)\
-      ((kt) == SSH_KEYTYPE_DSS_CERT01 ||\
-       (kt) == SSH_KEYTYPE_RSA_CERT01 ||\
-       (kt) == SSH_KEYTYPE_SK_ECDSA_CERT01 ||\
-       (kt) == SSH_KEYTYPE_SK_ED25519_CERT01 ||\
-      ((kt) >= SSH_KEYTYPE_ECDSA_P256_CERT01 &&\
-       (kt) <= SSH_KEYTYPE_ED25519_CERT01))
+    ((kt) == SSH_KEYTYPE_RSA_CERT01 ||\
+     (kt) == SSH_KEYTYPE_SK_ECDSA_CERT01 ||\
+     (kt) == SSH_KEYTYPE_SK_ED25519_CERT01 ||\
+    ((kt) >= SSH_KEYTYPE_ECDSA_P256_CERT01 &&\
+     (kt) <= SSH_KEYTYPE_ED25519_CERT01))
 
 /* SSH Signature Functions */
 ssh_signature ssh_signature_new(void);
@@ -170,6 +152,10 @@ int ssh_pki_import_pubkey_blob(const ssh_string key_blob,
 
 int ssh_pki_import_cert_blob(const ssh_string cert_blob,
                              ssh_key *pkey);
+
+/* SSH Private Key Functions */
+int ssh_pki_export_privkey_blob(const ssh_key key,
+                                ssh_string *pblob);
 
 
 /* SSH Signing Functions */

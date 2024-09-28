@@ -63,8 +63,8 @@ void _ssh_set_error(void *error,
     va_end(va);
 
     err->error.error_code = code;
-    if (ssh_get_log_level() >= SSH_LOG_WARN) {
-        ssh_log_function(SSH_LOG_WARN,
+    if (ssh_get_log_level() == SSH_LOG_TRACE) {
+        ssh_log_function(SSH_LOG_TRACE,
                          function,
                          err->error.error_buffer);
     }

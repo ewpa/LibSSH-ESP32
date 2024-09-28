@@ -45,6 +45,15 @@ static void ssh_legacy_log_callback(int priority,
     log_fn(session, priority, buffer, log_data);
 }
 
+void
+_ssh_remove_legacy_log_cb(void)
+{
+    if (ssh_get_log_callback() == ssh_legacy_log_callback) {
+        _ssh_reset_log_cb();
+        ssh_set_log_userdata(NULL);
+    }
+}
+
 int ssh_set_callbacks(ssh_session session, ssh_callbacks cb) {
   if (session == NULL || cb == NULL) {
     return SSH_ERROR;
