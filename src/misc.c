@@ -1985,7 +1985,7 @@ char *ssh_strerror(int err_num, char *buf, size_t buflen)
     rv = strerror_s(buf, buflen, err_num);
 #else
     /* POSIX version available for example on FreeBSD or in musl libc */
-    rv = strerror_r(err_num, buf, buflen);
+    rv = (int)strerror_r(err_num, buf, buflen);
 #endif /* _WIN32 */
 
     /* make sure the buffer is initialized and terminated with NULL */

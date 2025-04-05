@@ -32,6 +32,10 @@ This port created by Ewan Parker on 18th April 2020.
 Last ported 28th September 2024, built with libssh commit 854795c6, branch
 -stable-0.11, version libssh-0.11.1.
 
+[![pipeline status](https://gitlab.com/libssh/libssh-mirror/badges/master/pipeline.svg)](https://gitlab.com/libssh/libssh-mirror/commits/master)
+[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libssh.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libssh)
+
+```
   _   _   _                          _
  (_) (_) (_)                        (_)
  (_)  _  (_) _         _  _   _  _  (_) _
@@ -40,20 +44,19 @@ Last ported 28th September 2024, built with libssh commit 854795c6, branch
  (_) (_) (_)(_)(_) (_)(_) (_)(_)    (_)   (_).org
 
  The SSH library
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1* Why ?
--_-_-_-_-_
+```
+
+# Why?
 
 Why not ? :) I've began to work on my own implementation of the ssh protocol
 because i didn't like the currently public ones.
-Not any allowed you to import and use the functions as a powerful library, 
+Not any allowed you to import and use the functions as a powerful library,
 and so i worked on a library-based SSH implementation which was non-existing
 in the free and open source software world.
 
 
-2* How/Who ?
--_-_-_-_-_-_-_
+# How/Who?
 
 If you downloaded this file, you must know what it is : a library for
 accessing ssh client services through C libraries calls in a simple manner.
@@ -62,13 +65,11 @@ file
 
 If you ask yourself how to compile libssh, please read INSTALL before anything.
 
-3* Where ?
--_-_-_-_-_-_
+# Where ?
 
 https://www.libssh.org
 
-4* Contributing
--_-_-_-_-_-_-_-_-_
+# Contributing
 
 Please read the file 'CONTRIBUTING.md' next to this README file. It explains
 our copyright policy and how you should send patches for upstream inclusion.
