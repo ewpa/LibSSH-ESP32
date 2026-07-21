@@ -174,7 +174,7 @@ int ssh_config_parse_uri(const char *tok,
                          char **port,
                          bool ignore_port)
 {
-    char *endp = NULL;
+    const char *endp = NULL;
     long port_n;
     int rc;
 

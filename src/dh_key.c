@@ -171,6 +171,32 @@ int ssh_dh_keypair_set_keys(struct dh_ctx *ctx, int peer,
         ctx->keypair[peer].priv_key = priv;
     }
     if (pub) {
+        int rc;
+        bignum one = bignum_new();
+        bignum pmin1 = bignum_new();
+        if (one == NULL || pmin1 == NULL) {
+            bignum_safe_free(one);
+            bignum_safe_free(pmin1);
+            return SSH_ERROR;
+        }
+        rc = bignum_set_word(one, 1);
+        if (rc != 1) {
+            bignum_safe_free(one);
+            bignum_safe_free(pmin1);
+            return SSH_ERROR;
+        }
+        bignum_sub(pmin1, ctx->modulus, one);
+
+        /* Validate the peer public key `x` is 1 < x < (modulus - 1) */
+        if (bignum_cmp(pub, one) <= 0 ||
+            bignum_cmp(pub, pmin1) >= 0) {
+            bignum_safe_free(one);
+            bignum_safe_free(pmin1);
+            return SSH_ERROR;
+        }
+        bignum_safe_free(one);
+        bignum_safe_free(pmin1);
+
         bignum_safe_free(ctx->keypair[peer].pub_key);
         ctx->keypair[peer].pub_key = pub;
     }

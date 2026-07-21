@@ -62,13 +62,12 @@ struct ssh_string_struct *ssh_string_new(size_t size)
         return NULL;
     }
 
-    str = malloc(sizeof(struct ssh_string_struct) + size);
+    str = calloc(1, sizeof(struct ssh_string_struct) + size);
     if (str == NULL) {
         return NULL;
     }
 
     str->size = htonl(size);
-    str->data[0] = 0;
 
     return str;
 }

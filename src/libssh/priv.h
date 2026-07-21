@@ -253,6 +253,8 @@ int ssh_gettimeofday(struct timeval *__p, void *__t);
 # define LIBSSH_MEM_PROTECTION
 #endif
 
+#define SSH_DANGEROUS_SHELL_CHARS "'`\";&<>|(){}$\\,"
+
 /* forward declarations */
 struct ssh_common_struct;
 struct ssh_kex_struct;

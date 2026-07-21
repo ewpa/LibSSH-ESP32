@@ -1929,7 +1929,7 @@ err:
  */
 char *ssh_strreplace(const char *src, const char *pattern, const char *replace)
 {
-    char *p = NULL;
+    const char *p = NULL;
     char *src_replaced = NULL;
 
     if (src == NULL) {
@@ -2196,7 +2196,7 @@ int ssh_check_username_syntax(const char *username)
 
     username_len = strlen(username);
     if (username_len == 0 || username[username_len - 1] == '\\' ||
-        strpbrk(username, "'`\";&<>|(){}") != NULL) {
+        strpbrk(username, SSH_DANGEROUS_SHELL_CHARS) != NULL) {
         return SSH_ERROR;
     }
     for (size_t i = 0; i < username_len; i++) {

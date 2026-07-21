@@ -195,6 +195,13 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_open_conf){
   if (rc != SSH_OK)
       goto error;
 
+  if (channel->remote_maxpacket == 0) {
+      SSH_LOG(SSH_LOG_RARE,
+              "Invalid maximum packet size 0 in "
+              "SSH2_MSG_CHANNEL_OPEN_CONFIRMATION");
+      goto error;
+  }
+
   SSH_LOG(SSH_LOG_DEBUG,
       "Received a CHANNEL_OPEN_CONFIRMATION for channel %" PRIu32 ":%" PRIu32,
       channel->local_channel,
@@ -553,6 +560,15 @@ SSH_PACKET_CALLBACK(channel_rcv_change_window) {
 
   was_empty = channel->remote_window == 0;
 
+  if (UINT32_MAX - channel->remote_window < bytes) {
+    ssh_set_error(session,
+                  SSH_FATAL,
+                  "Window adjust %" PRIu32 " overflows remote window.",
+                  bytes);
+    session->session_state = SSH_SESSION_STATE_ERROR;
+    return SSH_PACKET_USED;
+  }
+
   channel->remote_window += bytes;
 
   /* Writing to the channel is non-blocking until the receive window is empty.
@@ -627,6 +643,13 @@ SSH_PACKET_CALLBACK(channel_rcv_data)
             is_stderr ? " in stderr"  : "",
             channel->local_window,
             channel->remote_window);
+
+    if (channel->flags & SSH_CHANNEL_FLAG_CLOSED_REMOTE) {
+        SSH_LOG(SSH_LOG_WARNING, "Received data on (remotely) closed channel");
+        ssh_set_error(session, SSH_FATAL, "Received data on (remotely) closed channel");
+        SSH_STRING_FREE(str);
+        return SSH_PACKET_USED;
+    }
 
     if (len > channel->local_window) {
         SSH_LOG(SSH_LOG_RARE,
@@ -1711,7 +1734,7 @@ int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len)
  */
 int ssh_channel_is_open(ssh_channel channel)
 {
-    if (channel == NULL) {
+    if (channel == NULL || channel->session == NULL) {
         return 0;
     }
     return (channel->state == SSH_CHANNEL_STATE_OPEN && channel->session->alive != 0);
@@ -3458,7 +3481,7 @@ int ssh_channel_get_exit_state(ssh_channel channel,
         *pexit_signal = NULL;
         if (channel->exit.signal != NULL) {
             *pexit_signal = strdup(channel->exit.signal);
-            if (pexit_signal == NULL) {
+            if (*pexit_signal == NULL) {
                 ssh_set_error_oom(session);
                 return SSH_ERROR;
             }

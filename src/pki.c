@@ -65,7 +65,7 @@
 
 enum ssh_keytypes_e pki_privatekey_type_from_string(const char *privkey)
 {
-    char *start = NULL;
+    const char *start = NULL;
 
     start = strstr(privkey, RSA_HEADER_BEGIN);
     if (start != NULL) {
@@ -804,7 +804,7 @@ int ssh_pki_import_privkey_base64(const char *b64_key,
                                   ssh_key *pkey)
 {
     ssh_key key = NULL;
-    char *openssh_header = NULL;
+    const char *openssh_header = NULL;
 
     if (b64_key == NULL || pkey == NULL) {
         return SSH_ERROR;

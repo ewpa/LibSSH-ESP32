@@ -313,7 +313,7 @@ static int cmp_first_kex_algo(const char *client_str,
     size_t client_kex_len;
     size_t server_kex_len;
 
-    char *colon = NULL;
+    const char *colon = NULL;
 
     int is_wrong = 1;
 
@@ -1100,7 +1100,7 @@ int ssh_send_kex(ssh_session session)
      * do it now. The packet is simple, but we need to do some preparations */
     if (first_kex_packet_follows == 1) {
         char *list = kex->methods[SSH_KEX];
-        char *colon = strchr(list, ',');
+        const char *colon = strchr(list, ',');
         size_t kex_name_len = colon ? (size_t)(colon - list) : strlen(list);
         char *kex_name = calloc(kex_name_len + 1, 1);
         if (kex_name == NULL) {

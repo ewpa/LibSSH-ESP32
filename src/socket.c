@@ -964,6 +964,7 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
 int
 ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
 {
+    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
     socket_t pair[2];
     ssh_poll_handle h = NULL;
     int pid;
@@ -982,7 +983,17 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
     pid = fork();
     if (pid == 0) {
         ssh_execute_command(command, pair[0], pair[0]);
-        /* Does not return */
+        /* child: Does not return */
+    }
+    /* parent */
+    if (pid == -1) {
+        close(pair[0]);
+        close(pair[1]);
+        ssh_set_error(s->session,
+                      SSH_FATAL,
+                      "fork failed: %s",
+                      ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        return SSH_ERROR;
     }
     s->proxy_pid = pid;
     close(pair[0]);

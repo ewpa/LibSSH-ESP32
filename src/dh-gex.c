@@ -167,6 +167,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_group)
     if (bignum_cmp(modulus, one) <= 0) {
         /* p must be positive and preferably bigger than one */
         ssh_set_error(session, SSH_FATAL, "Invalid dh group parameter p");
+        goto error;
     }
     if (!bignum_is_bit_set(modulus, 0)) {
         /* p must be a prime and therefore not divisible by 2 */

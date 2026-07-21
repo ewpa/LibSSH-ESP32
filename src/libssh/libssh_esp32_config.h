@@ -7,7 +7,7 @@
 #define PACKAGE "libssh"
 
 /* Version number of package */
-#define VERSION "0.11.4"
+#define VERSION "0.11.5"
 
 #define SYSCONFDIR "etc"
 
@@ -285,7 +285,7 @@
 
 #ifndef HAVE_COMPILER__FUNC__
 #define HAVE_COMPILER__FUNC__ 1
-#endif 
+#endif
 
 // libssh-src-upstream/include/libssh/config.h
 

@@ -1219,10 +1219,21 @@ SSH_PACKET_CALLBACK(ssh_packet_channel_open){
   SSH_LOG(SSH_LOG_PACKET,
       "Clients wants to open a %s channel", type_c);
 
-  ssh_buffer_unpack(packet,"ddd",
-          &msg->channel_request_open.sender,
-          &msg->channel_request_open.window,
-          &msg->channel_request_open.packet_size);
+  rc = ssh_buffer_unpack(packet,
+                         "ddd",
+                         &msg->channel_request_open.sender,
+                         &msg->channel_request_open.window,
+                         &msg->channel_request_open.packet_size);
+  if (rc != SSH_OK){
+      goto error;
+  }
+
+  if (msg->channel_request_open.packet_size == 0) {
+      ssh_set_error(session,
+                    SSH_FATAL,
+                    "Invalid maximum packet size 0 in SSH2_MSG_CHANNEL_OPEN");
+      goto error;
+  }
 
   if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED){
     ssh_set_error(session,SSH_FATAL, "Invalid state when receiving channel open request (must be authenticated)");

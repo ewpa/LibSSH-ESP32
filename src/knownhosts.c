@@ -310,7 +310,11 @@ static int ssh_known_hosts_read_entries(const char *match,
             }
         }
         if (entry != NULL) {
-            ssh_list_append(*entries, entry);
+            rc = ssh_list_append(*entries, entry);
+            if (rc != SSH_OK) {
+                ssh_knownhosts_entry_free(entry);
+                goto error;
+            }
         }
     }
 
@@ -672,6 +676,7 @@ int ssh_known_hosts_parse_line(const char *hostname,
     struct ssh_knownhosts_entry *e = NULL;
     char *known_host = NULL;
     char *p = NULL;
+    const char *cp = NULL;
     char *save_tok = NULL;
     enum ssh_keytypes_e key_type;
     int match = 0;
@@ -805,9 +810,9 @@ int ssh_known_hosts_parse_line(const char *hostname,
     /* comment */
     p = strtok_r(NULL, " ", &save_tok);
     if (p != NULL) {
-        p = strstr(line, p);
-        if (p != NULL) {
-            e->comment = strdup(p);
+        cp = strstr(line, p);
+        if (cp != NULL) {
+            e->comment = strdup(cp);
             if (e->comment == NULL) {
                 rc = SSH_ERROR;
                 goto out;
@@ -1178,6 +1183,10 @@ ssh_session_get_known_hosts_entry(ssh_session session,
                                   struct ssh_knownhosts_entry **pentry)
 {
     enum ssh_known_hosts_e old_rv, rv = SSH_KNOWN_HOSTS_UNKNOWN;
+
+    if (pentry != NULL) {
+        *pentry = NULL;
+    }
 
     if (session->opts.knownhosts == NULL) {
         if (ssh_options_apply(session) < 0) {

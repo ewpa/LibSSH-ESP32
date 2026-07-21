@@ -29,8 +29,8 @@ ESP32 Arduino framework compiled with the CONFIG_MBEDTLS_HARDWARE_SHA setting
 disabled in the sdkconfig.
 
 This port created by Ewan Parker on 18th April 2020.
-Last ported 10th February 2026, built with libssh commit ca9c055d, branch
--stable-0.11, version libssh-0.11.4.
+Last ported 21st July 2026, built with libssh commit a09fdd00, branch
+-stable-0.11, version libssh-0.11.5.
 
 [![pipeline status](https://gitlab.com/libssh/libssh-mirror/badges/master/pipeline.svg)](https://gitlab.com/libssh/libssh-mirror/commits/master)
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libssh.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libssh)
