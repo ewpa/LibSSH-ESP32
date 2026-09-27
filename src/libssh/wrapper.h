@@ -121,7 +121,7 @@ void ssh_crypto_finalize(void);
 
 void ssh_cipher_clear(struct ssh_cipher_struct *cipher);
 struct ssh_hmac_struct *ssh_get_hmactab(void);
-struct ssh_cipher_struct *ssh_get_ciphertab(void);
+const struct ssh_cipher_struct *ssh_get_ciphertab(void);
 const char *ssh_hmac_type_to_string(enum ssh_hmac_e hmac_type, bool etm);
 
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
