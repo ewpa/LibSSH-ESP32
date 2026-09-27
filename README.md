@@ -30,8 +30,8 @@ disabled in the sdkconfig.
 
 To tune memory usage you may wish to set the below defines (in CFLAGS).
 
-Define            | libssh default | esp32 default
-------------------+----------------+---------------
+#define (-D)      | libssh default | esp32 default
+------------------|----------------|---------------
 WINDOW_DEFAULT    |             2M |          8000
 BUFFER_SIZE_MAX   |           256M |         16384
 CHAN_MAX_PACKET   |          35000 |         32768
