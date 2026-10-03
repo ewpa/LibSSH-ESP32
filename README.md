@@ -30,12 +30,11 @@ disabled in the sdkconfig.
 
 To tune memory usage you may wish to set the below defines (in CFLAGS).
 
-#define (-D)      | libssh default | esp32 default
-------------------|----------------|---------------
-WINDOW_DEFAULT    |             2M |          8000
-BUFFER_SIZE_MAX   |           256M |         16384
-CHAN_MAX_PACKET   |          35000 |         32768
-CHAN_LOCAL_WINDOW |          32768 |          8000
+#define (-D)       | libssh default | esp32 default
+-------------------|----------------|---------------
+CHANNEL_MAX_PACKET |          35000 |         32768
+WINDOW_DEFAULT     |             2M |          8000
+BUFFER_SIZE_MAX    |           256M |         16384
 
 This port created by Ewan Parker on 18th April 2020.
 Last ported 21st July 2026, built with libssh commit a09fdd00, branch

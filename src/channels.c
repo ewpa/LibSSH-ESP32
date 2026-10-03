@@ -57,7 +57,9 @@
  * uncompressed payload length of 32768 bytes or less and a total packet
  * size of 35000 bytes or less.
  */
+#ifndef CHANNEL_MAX_PACKET
 #define CHANNEL_MAX_PACKET 32768
+#endif
 
 /*
  * WINDOW_DEFAULT matches the default OpenSSH session window size.
