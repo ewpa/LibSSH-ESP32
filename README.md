@@ -28,9 +28,17 @@ For improved stability under any concurrency it is recommended to use the
 ESP32 Arduino framework compiled with the CONFIG_MBEDTLS_HARDWARE_SHA setting
 disabled in the sdkconfig.
 
+To tune memory usage you may wish to set the below defines (in CFLAGS).
+
+#define (-D)       | libssh default | esp32 default
+-------------------|----------------|---------------
+CHANNEL_MAX_PACKET |          35000 |         32768
+WINDOW_DEFAULT     |             2M |          8000
+BUFFER_SIZE_MAX    |           256M |         16384
+
 This port created by Ewan Parker on 18th April 2020.
 Last ported 21st July 2026, built with libssh commit a09fdd00, branch
--stable-0.11, version libssh-0.11.5.
+stable-0.11, version libssh-0.11.5.
 
 [![pipeline status](https://gitlab.com/libssh/libssh-mirror/badges/master/pipeline.svg)](https://gitlab.com/libssh/libssh-mirror/commits/master)
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libssh.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libssh)

@@ -1339,8 +1339,14 @@ int ssh_message_channel_request_open_reply_accept_channel(ssh_message msg, ssh_c
     session = msg->session;
 
     chan->local_channel = ssh_channel_new_id(session);
-    chan->local_maxpacket = 32768;
-    chan->local_window = 8000;
+    #ifndef CHANNEL_MAX_PACKET
+    #define CHANNEL_MAX_PACKET 32768
+    #endif
+    #ifndef WINDOW_DEFAULT
+    #define WINDOW_DEFAULT 8000
+    #endif
+    chan->local_maxpacket = CHANNEL_MAX_PACKET;
+    chan->local_window = WINDOW_DEFAULT;
     chan->remote_channel = msg->channel_request_open.sender;
     chan->remote_maxpacket = msg->channel_request_open.packet_size;
     chan->remote_window = msg->channel_request_open.window;

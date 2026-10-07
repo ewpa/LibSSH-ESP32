@@ -106,7 +106,7 @@ static int pki_private_key_decrypt(ssh_string blob,
                                    ssh_auth_callback auth_fn,
                                    void *auth_data)
 {
-    struct ssh_cipher_struct *ciphers = ssh_get_ciphertab();
+    const struct ssh_cipher_struct *ciphers = ssh_get_ciphertab();
     struct ssh_cipher_struct cipher;
     uint8_t key_material[128] = {0};
     char passphrase_buffer[128] = {0};
@@ -407,7 +407,7 @@ static int pki_private_key_encrypt(ssh_buffer privkey_buffer,
                                    uint32_t rounds,
                                    ssh_string salt)
 {
-    struct ssh_cipher_struct *ciphers = ssh_get_ciphertab();
+    const struct ssh_cipher_struct *ciphers = ssh_get_ciphertab();
     struct ssh_cipher_struct cipher;
     uint8_t key_material[128] = {0};
     size_t key_material_len;

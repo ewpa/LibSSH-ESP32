@@ -53,8 +53,10 @@ struct ssh_buffer_struct {
     uint8_t *data;
 };
 
+#ifndef BUFFER_SIZE_MAX
 /* Buffer size maximum is 16k */
 #define BUFFER_SIZE_MAX 16384
+#endif
 
 /**
  * @defgroup libssh_buffer The SSH buffer functions

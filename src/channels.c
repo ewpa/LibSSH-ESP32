@@ -57,14 +57,18 @@
  * uncompressed payload length of 32768 bytes or less and a total packet
  * size of 35000 bytes or less.
  */
+#ifndef CHANNEL_MAX_PACKET
 #define CHANNEL_MAX_PACKET 32768
+#endif
 
 /*
  * WINDOW_DEFAULT matches the default OpenSSH session window size.
  * This controls how much data the peer can send before needing to receive
  * a round-trip SSH2_MSG_CHANNEL_WINDOW_ADJUST message that increases the window.
  */
+#ifndef WINDOW_DEFAULT
 #define WINDOW_DEFAULT 8000
+#endif
 
 /**
  * @defgroup libssh_channel The SSH channel functions
